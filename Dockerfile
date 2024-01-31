@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2021-2023, Carles Fernandez-Prades <carles.fernandez@cttc.es>
 # SPDX-License-Identifier: MIT
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 # build with "docker build --build-arg PETA_VERSION=2021.2 --build-arg PETA_RUN_FILE=petalinux-v2021.2-final-installer.run -t docker_petalinux2:2021.2 ."
 # or "docker build --build-arg PETA_VERSION=2021.2 --build-arg PETA_RUN_FILE=petalinux-v2021.2-final-installer.run --build-arg VIVADO_INSTALLER=Xilinx_Unified_2021.2_1021_0703.tar.gz -t docker_petalinux2:2021.2 ."
@@ -84,7 +84,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
   xorg \
   xterm \
   xvfb \
-  xxd
+  xxd \
+  libtinfo5
   
 RUN apt-get install zlib1g-dev \
   && apt-get clean \
@@ -99,10 +100,10 @@ RUN dpkg --add-architecture i386 && apt-get update && \
 RUN locale-gen en_US.UTF-8 && update-locale
 
 # Build and install Python 3.11, required by repo
-RUN wget https://www.python.org/ftp/python/3.11.4/Python-3.11.4.tgz \
-  && tar -xf Python-3.11.*.tgz && cd Python-3.11.*/ \
-  && ./configure --enable-optimizations && make && make altinstall \
-  && cd .. && rm Python-3.11.*.tgz && rm -rf Python-3.11.*/
+#RUN wget https://www.python.org/ftp/python/3.11.4/Python-3.11.4.tgz \
+#  && tar -xf Python-3.11.*.tgz && cd Python-3.11.*/ \
+#  && ./configure --enable-optimizations && make && make altinstall \
+#  && cd .. && rm Python-3.11.*.tgz && rm -rf Python-3.11.*/
 
 # make a petalinux user
 RUN adduser --disabled-password --gecos '' petalinux && \
