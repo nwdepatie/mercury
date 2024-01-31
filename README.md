@@ -12,7 +12,7 @@ Using MicroZed 7z020 RevH with custom carrier board
 
 ## Recreating Petalinux Build
 1. Pull `nwdepatie/mercury-build` from DockerHub (`docker pull nwdepatie/mercury-build`, note that this is around 14GB)
-2. Run `docker run docker run -it -v "$PWD":"$PWD" -w "$PWD" --rm -u petalinux mercury-build
+2. Run `docker run -it -v "$PWD":"$PWD" -w "$PWD" --rm -u petalinux mercury-build`
 
 #### Rebuilding the Docker Image
 > The Docker container is GINORMOUS and I found the base here: https://github.com/carlesfernandez/docker-petalinux2. This should only be done periodically and should not be the main method of building
