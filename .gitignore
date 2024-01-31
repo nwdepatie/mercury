@@ -103,3 +103,17 @@
 */*/*/bd/*/ip/*/*.tcl
 hw_handoff
 ipshared
+
+# Petalinux
+*/*/config.old
+*/*/rootfs_config.old
+build/
+images/linux/
+pre-built/linux/
+.petalinux/*
+!.petalinux/metadata
+*.o
+*.jou
+*.log
+/components/plnx_workspace
+/components/yocto
