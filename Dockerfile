@@ -139,39 +139,39 @@ ARG VIVADO_UPDATE
 
 COPY install_config.txt /vivado-config/
 
-RUN \
-  if [ "$VIVADO_INSTALLER" ] ; then \
-  mkdir -p /vivado-installer && cd /vivado-installer/ && wget -q ${HTTP_SERV}/${VIVADO_INSTALLER} && cd .. && \
-  cat /vivado-installer/${VIVADO_INSTALLER} | tar zx --strip-components=1 -C /vivado-installer && \
-  cp /vivado-config/install_config.txt /vivado-installer/ && \
-  /vivado-installer/xsetup \
-  --agree ${VIVADO_AGREE} \
-  --batch Install \
-  --config /vivado-installer/install_config.txt && \
-  rm -rf /vivado-installer ; \
-  fi
+#RUN \
+#  if [ "$VIVADO_INSTALLER" ] ; then \
+#  mkdir -p /vivado-installer && cd /vivado-installer/ && wget -q ${HTTP_SERV}/${VIVADO_INSTALLER} && cd .. && \
+#  cat /vivado-installer/${VIVADO_INSTALLER} | tar zx --strip-components=1 -C /vivado-installer && \
+#  cp /vivado-config/install_config.txt /vivado-installer/ && \
+#  /vivado-installer/xsetup \
+#  --agree ${VIVADO_AGREE} \
+#  --batch Install \
+#  --config /vivado-installer/install_config.txt && \
+#  rm -rf /vivado-installer ; \
+#  fi
 
 # apply 2021.2.1 Update
-RUN \
-  if [ "$VIVADO_UPDATE" ] ; then \
-  mkdir -p /vivado-installer && cd /vivado-installer/ && wget -q ${HTTP_SERV}/${VIVADO_UPDATE} && cd .. && \
-  cat /vivado-installer/${VIVADO_UPDATE} | tar zx --strip-components=1 -C /vivado-installer && \
-  cp /vivado-config/install_config.txt /vivado-installer/ && \
-  /vivado-installer/xsetup \
-  --agree ${VIVADO_AGREE} \
-  --batch Update \
-  --config /vivado-installer/install_config.txt && \
-  rm -rf /vivado-installer ; \
-  fi
+#RUN \
+#  if [ "$VIVADO_UPDATE" ] ; then \
+#  mkdir -p /vivado-installer && cd /vivado-installer/ && wget -q ${HTTP_SERV}/${VIVADO_UPDATE} && cd .. && \
+#  cat /vivado-installer/${VIVADO_UPDATE} | tar zx --strip-components=1 -C /vivado-installer && \
+#  cp /vivado-config/install_config.txt /vivado-installer/ && \
+#  /vivado-installer/xsetup \
+#  --agree ${VIVADO_AGREE} \
+#  --batch Update \
+#  --config /vivado-installer/install_config.txt && \
+#  rm -rf /vivado-installer ; \
+#  fi
 
 # apply Vitis patch
-RUN \
-  if [ "$VIVADO_UPDATE" ] ; then \
-  mv /y2k22_patch-1.2.zip /tools/Xilinx/ && cd /tools/Xilinx/ && unzip y2k22_patch-1.2.zip && \
-  export LD_LIBRARY_PATH=$PWD/Vivado/2021.2/tps/lnx64/python-3.8.3/lib/ && \
-  ./Vivado/2021.2/tps/lnx64/python-3.8.3/bin/python3 y2k22_patch/patch.py && \
-  rm y2k22_patch-1.2.zip && rm -rf y2k22_patch ; \
-  fi
+#RUN \
+#  if [ "$VIVADO_UPDATE" ] ; then \
+#  mv /y2k22_patch-1.2.zip /tools/Xilinx/ && cd /tools/Xilinx/ && unzip y2k22_patch-1.2.zip && \
+#  export LD_LIBRARY_PATH=$PWD/Vivado/2021.2/tps/lnx64/python-3.8.3/lib/ && \
+#  ./Vivado/2021.2/tps/lnx64/python-3.8.3/bin/python3 y2k22_patch/patch.py && \
+#  rm y2k22_patch-1.2.zip && rm -rf y2k22_patch ; \
+#  fi
 
 # make /bin/sh symlink to bash instead of dash:
 RUN echo "dash dash/sh boolean false" | debconf-set-selections
@@ -195,11 +195,10 @@ RUN echo "/usr/sbin/in.tftpd --foreground --listen --address [::]:69 --secure /t
   echo ". /tools/Xilinx/Vivado/${PETA_VERSION}/settings64.sh" >> /etc/profile ; \
   fi && \
   echo ". /etc/profile" >> /root/.profile
+RUN chown petalinux /home/petalinux/project
 
 EXPOSE 69/udp
 
 USER petalinux
-
-RUN git config --global user.email "geniux@example.com" && git config --global user.name "Geniux"
 
 ENTRYPOINT ["/bin/bash", "-l"]
