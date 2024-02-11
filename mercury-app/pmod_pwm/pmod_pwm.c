@@ -1,103 +1,116 @@
 /*
- * https://www.realdigital.org/doc/4b3000d07f821a225e90486b4ea33815 Q
+ * https://www.realdigital.org/doc/4b3000d07f821a225e90486b4ea33815
+ * https://docs.xilinx.com/r/en-US/ug585-zynq-7000-SoC-TRM/Register-MIO_PIN_13-Details
  */
 
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/mman.h>
-#include <err.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <signal.h> // For signal handling
 
-/* MIO Base Addr */
-#define MIO_PIN_16 0xF8000740
-#define MIO_PIN_17 0xF8000744
-#define MIO_PIN_18 0xF8000748
-#define MIO_PIN_50 0xF80007C8
-#define MIO_PIN_51 0xF80007CC
-#define GPIO_DIRM_0 0xE000A204 // Direction mode bank 0
-#define GPIO_OUTE_0 0xE000A208 // Output enable bank 0
-#define GPIO_DIRM_1 0xE000A244 // Direction mode bank 1
+/* Base Addresses */
+#define SLCR_BASE 0xF8000000 // Base address for SLCR
+#define GPIO_BASE 0xE000A000 // Base address for GPIO
 
-// register offsets
-#define REG_OFFSET(REG, OFF) ((REG)+(OFF))
+/* MIO Pin Offsets */
+#define MIO_PIN_13_OFFSET 0x734 // MIO Pin 13 offset from SLCR_BASE
+
+/* GPIO Configuration */
+#define GPIO_DIRM_OFFSET 0x204 // Offset for GPIO direction mode
+#define GPIO_OUTE_OFFSET 0x208 // Offset for GPIO output enable
+
+#define PAGE_SIZE 4096 // Typical page size
+
+#define MS_TO_US(x) (x * 1000) // Corrected for simplicity
 
 /// stop infinite loop flag
-static unsigned char stopLoop = 0;
+static volatile unsigned char stopLoop = 0;
 
 /* @brief Handle signals
-	 @param num Signal Number */
+   @param num Signal Number */
 static void signal_handler(int num)
 {
-	stopLoop = 1;
+    stopLoop = 1;
 }
 
-// map GPIO peripheral; base address will be mapped to gpioregs pointer
-static int map_peripheral(unsigned int** peripheral, unsigned int peripheral_addr)
+// map GPIO peripheral; base address will be mapped to peripheral pointer
+static int map_peripheral(void **peripheral, uint32_t base_addr, uint32_t offset, size_t map_size)
 {
-	int fd = 0;
+    int fd = open("/dev/mem", O_RDWR | O_SYNC);
+    if (fd < 0) {
+        perror("open");
+        return -1;
+    }
 
-	/* Cleanse input */
-	if (!peripheral || !peripheral_addr) {
-		// invalid pointers
-		return 1;
-	}
+    // Adjust base address to be page-aligned
+    off_t page_base = (base_addr + offset) & ~(PAGE_SIZE - 1);
+    off_t page_offset = (base_addr + offset) - page_base;
 
-	/* Open /dev/mem to retrieve memory */
-	fd = open("/dev/mem", O_RDWR);
-	if (fd < 0) {
-		// can't open file
-		return fd;
-	}
+    *peripheral = mmap(NULL, map_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, page_base);
+    if (*peripheral == MAP_FAILED) {
+        perror("mmap");
+        close(fd);
+        return -2;
+    }
 
-	/* mmap the GPIO register */
-	*peripheral = mmap(NULL, 8, PROT_READ | PROT_WRITE, MAP_SHARED, fd, peripheral_addr);
-	//if (PTR_ERR(*gpioregs)) {
-	//  return PTR_ERR(*gpioregs);
-	//}
+    // Adjust the peripheral pointer by page_offset to point to the correct register
+    *peripheral += page_offset / sizeof(uint32_t); // Adjust for uint32_t pointer arithmetic
 
-	close(fd);
-
-	// success
-	return 0;
+    close(fd);
+    return 0;
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-	unsigned int *gpiocfg;
+    signal(SIGINT, signal_handler); // Setup signal handling for graceful exit
 
+    uint32_t *slcr, *gpio;
 	float period      = 1; /* ms */
 	float duty_cycle  = 50; /* percent */
 
-	// try to setup LEDs
-	if (map_peripheral(&gpiocfg, GPIO_DIRM_0)) {
-		// failed to setup
-		return 1;
-	}
+	printf("Mapping peripherals...\n");
 
-	char input[256];
+    // Map SLCR for MIO configuration
+    if (map_peripheral((void **)&slcr, SLCR_BASE, MIO_PIN_13_OFFSET, PAGE_SIZE)) {
+        fprintf(stderr, "Failed to map SLCR\n");
+        return 1;
+    }
 
-	// Get Temperature in Fahrenheit from user
-	printf("Enter a decimal number N to count up to: ");
-	fgets(input, sizeof(input), stdin);
-	int number = atoi(input);
-	int counter = 0;
+    // Map GPIO
+    if (map_peripheral((void **)&gpio, GPIO_BASE, GPIO_DIRM_OFFSET, PAGE_SIZE)) {
+        fprintf(stderr, "Failed to map GPIO\n");
+        munmap(slcr, PAGE_SIZE); // Cleanup previous mapping
+        return 1;
+    }
+
+	printf("Configuring peripherals...\n");
+
+    // Correctly configure MIO13 for GPIO use
+    slcr[0] = 0x00001600; // Configuration value for MIO_PIN_13 based on desired function
+
+    // Configure GPIO Controller
+    gpio[GPIO_DIRM_OFFSET / sizeof(uint32_t)] = 0x00002000; // Assuming GPIO13 is what you want to control
+    gpio[GPIO_OUTE_OFFSET / sizeof(uint32_t)] = 0x00002000; // Enable output
+
+	printf("Writing PWM...\n");
 
 	while (!stopLoop) {
-		err = axigpio_single_set(gpio, 0, CHANNEL_NUM);
-		if (err)
-			return err;
+		//set high
 
 		usleep(MS_TO_US(period * duty_cycle / 100));
 
-		err = axigpio_single_clear(gpio, 0, CHANNEL_NUM);
-		if (err)
-			return err;
+		//set low
 
 		usleep(MS_TO_US(period * (1 - (duty_cycle / 100))));
 	}
 
+	printf("\nUnmapping peripherals...\n");
+
 	//de-initialize peripherals here
-	axigpio_free(gpio);
+	munmap(slcr, 8);
+	munmap(gpio, 4);
 	return 0;
 }
