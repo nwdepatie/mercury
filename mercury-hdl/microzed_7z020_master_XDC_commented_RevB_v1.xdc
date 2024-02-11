@@ -50,10 +50,7 @@
 #     constraint, UCF commented out above, XDC equivalent placedbelow the UCF.
 #
 # ----------------------------------------------------------------------------
- 
-# Bank 13, Vcco = Vadj 
-# Set the bank voltage for bank 13.
-set_property IOSTANDARD LVCMOS18 [get_ports -filter { IOBANK == 13 } ]
+
 
 #NET BANK13_LVDS_0_N LOC = V7  | IOSTANDARD = LVCMOS18;  # "BANK13_LVDS_0_N"
 set_property PACKAGE_PIN V7 [get_ports {BANK13_LVDS_0_N}]
@@ -86,9 +83,9 @@ set_property PACKAGE_PIN V6 [get_ports {BANK13_LVDS_6_P}]
 #NET BANK13_SE_0     LOC = V5  | IOSTANDARD = LVCMOS18;  # "BANK13_SE_0"
 set_property PACKAGE_PIN V5 [get_ports {BANK13_SE_0}]
 
-# Bank 34, Vcco = Vadj
-# Set the bank voltage for bank 34.
-set_property IOSTANDARD LVCMOS18 [get_ports -filter { IOBANK == 34 } ]
+# Bank 13, Vcco = Vadj 
+# Set the bank voltage for bank 13.
+set_property IOSTANDARD LVCMOS18 [get_ports -filter { IOBANK == 13 } ]
 
 #NET JX1_LVDS_0_N    LOC = T10 | IOSTANDARD = LVCMOS18;  # "JX1_LVDS_0_N"
 set_property PACKAGE_PIN T10 [get_ports {JX1_LVDS_0_N}]
@@ -191,9 +188,9 @@ set_property PACKAGE_PIN R19 [get_ports {JX1_SE_0}]
 #NET JX1_SE_1        LOC = T19 | IOSTANDARD = LVCMOS18;  # "JX1_SE_1"
 set_property PACKAGE_PIN T19 [get_ports {JX1_SE_1}]
 
-# Bank 35, Vcco = Vadj
-# Set the bank voltage for bank 35.
-set_property IOSTANDARD LVCMOS18 [get_ports -filter { IOBANK == 35 } ]
+# Bank 34, Vcco = Vadj
+# Set the bank voltage for bank 34.
+set_property IOSTANDARD LVCMOS18 [get_ports -filter { IOBANK == 34 } ]
 
 #NET JX2_LVDS_0_N    LOC = B20 | IOSTANDARD = LVCMOS18;  # "JX2_LVDS_0_N"
 set_property PACKAGE_PIN B20 [get_ports {JX2_LVDS_0_N}]
@@ -295,3 +292,7 @@ set_property PACKAGE_PIN K19 [get_ports {JX2_LVDS_9_P}]
 set_property PACKAGE_PIN G14 [get_ports {JX2_SE_0}]
 #NET JX2_SE_1        LOC = J15 | IOSTANDARD = LVCMOS18;  # "JX2_SE_1"
 set_property PACKAGE_PIN J15 [get_ports {JX2_SE_1}]
+
+# Bank 35, Vcco = Vadj
+# Set the bank voltage for bank 35.
+set_property IOSTANDARD LVCMOS18 [get_ports -filter { IOBANK == 35 } ]
