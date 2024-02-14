@@ -1,4 +1,4 @@
-ARG CROSS
+#ARG CROSS
 
 FROM ros:noetic-ros-base
 
@@ -20,9 +20,11 @@ COPY . .
 
 SHELL ["/bin/bash", "-c"]
 
+WORKDIR /home/proj
+
 # Conditionally cross compile / compile for host
-RUN if [[ -z "$CROSS" ]] ; \
-        then source /opt/ros/noetic/setup.bash && cargo build ; \
-        else source /opt/ros/noetic/setup.bash && cargo build \
-            --target armv7-unknown-linux-gnueabihf ; \
-    fi;
+#RUN if [[ -z "$CROSS" ]] ; \
+#        then source /opt/ros/noetic/setup.bash && cargo build ; \
+#        else source /opt/ros/noetic/setup.bash && cargo build \
+#            --target armv7-unknown-linux-gnueabihf ; \
+#    fi;
