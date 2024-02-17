@@ -2,6 +2,7 @@
 use rosrust;
 use std::thread;
 use std::thread::JoinHandle;
+use std::sync::Arc;
 
 pub mod motor_model;
 use self::motor_model::DriveMotorModel;
@@ -36,9 +37,9 @@ impl DriveObserver {
 	}
 }
 
-fn start_fault_monitor(&drive_obsrv : &DriveObserver) -> JoinHandle<()>
+fn start_fault_monitor(drive_obsrv : Arc<DriveObserver>) -> JoinHandle<()>
 {
-	thread::spawn(|| {
+	thread::spawn(move || {
 		/* Create Publisher */
 		let fault_pub = rosrust::publish("/drive/faults", 2).unwrap();
 		fault_pub.wait_for_subscribers(None).unwrap();
@@ -64,9 +65,9 @@ fn start_fault_monitor(&drive_obsrv : &DriveObserver) -> JoinHandle<()>
 	})
 }
 
-fn start_tick_monitor(&drive_obsrv : &DriveObserver) -> JoinHandle<()>
+fn start_tick_monitor(drive_obsrv : Arc<DriveObserver>) -> JoinHandle<()>
 {
-	thread::spawn(|| {
+	thread::spawn(move || {
 		/* Create Publisher */
 		let tick_pub = rosrust::publish("/drive/encoder/ticks", 2).unwrap();
 		tick_pub.wait_for_subscribers(None).unwrap();
@@ -97,10 +98,13 @@ fn main()
 	/* Initialize ROS node */
 	rosrust::init("drive_pub");
 
-	let drive_obsrv = DriveObserver::new();
+	let drive_obsrv = Arc::new(DriveObserver::new());
 
-	let fault_handle = start_fault_monitor(&drive_obsrv);
-	let tick_handle = start_tick_monitor(&drive_obsrv);
+	let drive_obsrv_arc = drive_obsrv.clone();
+	let fault_handle = start_fault_monitor(drive_obsrv_arc);
+
+	let drive_obsrv_arc = drive_obsrv.clone();
+	let tick_handle = start_tick_monitor(drive_obsrv_arc);
 
 	fault_handle.join().unwrap();
 	tick_handle.join().unwrap();
