@@ -8,3 +8,11 @@ edition = "2021"
 [dependencies]
 rosrust = "0.9.11"
 rosrust_msg = "0.1.7"
+
+[[bin]]
+name = "publisher"
+path = "src/drive_pub.rs"
+
+[[bin]]
+name = "subscriber"
+path = "src/drive_sub.rs"
