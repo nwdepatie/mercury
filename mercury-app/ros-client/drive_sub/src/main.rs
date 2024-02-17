@@ -1,38 +1,92 @@
+/* Subscriber for Carrying out Commands for Chassis Drive Motors */
+
+use rosrust;
+use rosrust_msg::geometry_msgs::Twist;
+use std::sync::RwLock;
+
+struct DriveController {
+	wheel_base: f64,
+	wheel_radius: f64,
+	max_velocity_meters_per_second: f64,
+	max_angular_velocity_rad_per_second: f64,
+	velocities: RwLock<(f64, f64)>, /* Left and right velocities */
+}
+
+impl DriveController {
+	fn new() -> Self {
+		// Parameters
+		let wheel_base = rosrust::param("~wheel_base").unwrap().get().unwrap_or(0.2);
+		let wheel_radius = rosrust::param("~wheel_radius").unwrap().get().unwrap_or(0.095);
+		let max_velocity_meters_per_second = rosrust::param("~max_velocity_meters_per_second").unwrap().get().unwrap_or(10.0);
+		let max_angular_velocity_rad_per_second = rosrust::param("~max_angular_velocity_rad_per_second").unwrap().get().unwrap_or(6.0);
+
+		DriveController {
+			wheel_base,
+			wheel_radius,
+			max_velocity_meters_per_second,
+			max_angular_velocity_rad_per_second,
+			velocities: RwLock::new((0.0, 0.0)),
+		}
+	}
+
+	fn clamp_linear_speed(&self, speed: f64) -> f64 {
+		speed.max(-self.max_velocity_meters_per_second)
+			 .min(0.0)
+	}
+
+	fn clamp_angular_speed(&self, speed: f64) -> f64 {
+		speed.max(-self.max_angular_velocity_rad_per_second)
+			 .min(0.0)
+	}
+
+	fn send_motor_commands(&self) {
+		let velocities = self.velocities.read().unwrap();
+
+		// TODO Make hardware call
+
+		rosrust::ros_info!("Left Vel/Command: {}, Right Vel/Command: {}", velocities.0, velocities.1);
+	}
+
+	fn command_callback(&self, data: Twist) {
+		let linear_velocity = self.clamp_linear_speed(data.linear.x);
+		let angular_velocity = self.clamp_angular_speed(data.angular.z);
+
+		let left_velocity = linear_velocity - (angular_velocity * self.wheel_base / 2.0);
+		let right_velocity = linear_velocity + (angular_velocity * self.wheel_base / 2.0);
+
+		// Store the velocities safely
+		let mut velocities = self.velocities.write().unwrap();
+		*velocities = (left_velocity, right_velocity);
+		self.send_motor_commands();
+	}
+}
+
 fn main() {
-    // Initialize node
-    rosrust::init("talker");
+	/* Initialize ROS node */
+	rosrust::init("drive_sub");
 
-    // Create publisher
-    let chatter_pub = rosrust::publish("chatter", 2).unwrap();
-    chatter_pub.wait_for_subscribers(None).unwrap();
+	let drive_ctrl = DriveController::new();
 
-    let log_names = rosrust::param("~log_names").unwrap().get().unwrap_or(false);
+	/* 
+	 * Create subscriber
+	 * The subscriber is stopped when the returned object is destroyed
+	 */
+	let _subscriber_info = rosrust::subscribe_with_ids(
+		"/drive/cmd_vel",
+		2,
+		move |v: Twist, _caller_id: &str| {
+			drive_ctrl.command_callback(v);
+		}
+	)
+	.unwrap();
 
-    let mut count = 0;
-
-    // Create object that maintains 10Hz between sleep requests
-    let rate = rosrust::rate(100.0);
-
-    // Breaks when a shutdown signal is sent
-    while rosrust::is_ok() {
-        // Create string message
-        let msg = rosrust_msg::std_msgs::String {
-            data: format!("hello world from rosrust {}", count),
-        };
-
-        // Log event
-        rosrust::ros_info!("Publishing: {}", msg.data);
-
-        // Send string message to topic via publisher
-        chatter_pub.send(msg).unwrap();
-
-        if log_names {
-            rosrust::ros_info!("Subscriber names: {:?}", chatter_pub.subscriber_names());
-        }
-
-        // Sleep to maintain 10Hz rate
-        rate.sleep();
-
-        count += 1;
-    }
+	let log_names = rosrust::param("~log_names").unwrap()
+												.get()
+												.unwrap_or(false);
+	if log_names {
+		while rosrust::is_ok() {
+			/* Spin forever, we only execute things on callbacks from here */
+			rosrust::spin();
+		}
+	}
 }
