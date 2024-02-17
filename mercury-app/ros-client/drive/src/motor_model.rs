@@ -15,6 +15,7 @@ impl DriveMotorModel {
     pub fn wheel_base(&self) -> &f64 {
         &self.wheel_base
     }
+
     pub fn wheel_radius(&self) -> &f64 {
         &self.wheel_radius
     }
