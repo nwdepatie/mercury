@@ -1,5 +1,5 @@
 [package]
-name = "ros-client"
+name = "mercury-user"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,9 +10,17 @@ rosrust = "0.9.11"
 rosrust_msg = "0.1.7"
 
 [[bin]]
-name = "publisher"
+name = "gantry_pub"
+path = "src/gantry_pub.rs"
+
+[[bin]]
+name = "gantry_sub"
+path = "src/gantry_sub.rs"
+
+[[bin]]
+name = "drive_pub"
 path = "src/drive_pub.rs"
 
 [[bin]]
-name = "subscriber"
+name = "drive_sub"
 path = "src/drive_sub.rs"
