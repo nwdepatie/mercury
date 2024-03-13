@@ -22,7 +22,7 @@ pub fn load_bitstream(filename: &str, clocks: &[Clock]) -> Result<usize, String>
 
 fn configure_clocks(clocks: &[Clock]) {
 	assert!(clocks.len() >  0, "Need to enable at least 1 clock!");
-	assert!(clocks.len() <= 4, "Only four clocks (FCLK{0-3}) can be configured!");
+	assert!(clocks.len() <= 4, "Only four clocks (FCLK{{0-3}}) can be configured!");
 	let disabled = Clock { div0 : 0, div1: 0 };
 	let base_addr = 0xf8000000;
 	fn offset(ii : usize) -> usize { (0x170 / 4) + (ii * (0x10 / 4)) }
@@ -184,48 +184,6 @@ impl Dma {
 		let mut buf = None;
 		std::mem::swap(&mut buf, &mut self.rx_buffer);
 		buf.unwrap()
-	}
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum Color {
-	Black = 0,
-	Blue = 1,
-	Green = 2,
-	Cyan = 3,
-	Red = 4,
-	Magenta = 5,
-	Yellow = 6,
-	White = 7,
-}
-
-pub struct RgbLeds {
-	mem : MemoryMappedIO,
-}
-
-impl RgbLeds {
-	pub fn get() -> Self {
-		let mut mem = MemoryMappedIO::map(0x41210000, 8);
-		// configure lowest 6 gpios as output
-		mem[1] = !((7 << 3) | 7);
-		RgbLeds { mem }
-	}
-	pub fn set(&mut self, ld4_color : Color, ld5_color : Color) {
-		self.mem[0] = (ld4_color as u32 & 7) | ((ld5_color as u32 & 7) << 3);
-	}
-	pub fn set_ld4(&mut self, color : Color) {
-		let old = self.mem[0];
-		self.mem[0] = (old & !7) | ((color as u32) & 7);
-	}
-	pub fn set_ld5(&mut self, color : Color) {
-		let old = self.mem[0];
-		self.mem[0] = (old & !(7 << 3)) | (((color as u32) & 7) << 3);
-	}
-}
-impl Drop for RgbLeds {
-	fn drop(&mut self) {
-		// reset to all inputs
-		self.mem[1] = !0u32;
 	}
 }
 

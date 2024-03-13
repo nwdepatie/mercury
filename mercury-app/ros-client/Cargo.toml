@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+libc = "0.2.153"
 rosrust = "0.9.11"
 rosrust_msg = "0.1.7"
 
@@ -24,3 +25,7 @@ path = "src/drive_pub.rs"
 [[bin]]
 name = "drive_sub"
 path = "src/drive_sub.rs"
+
+[[bin]]
+name = "loader"
+path = "src/load.rs"
