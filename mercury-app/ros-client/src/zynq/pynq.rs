@@ -187,7 +187,7 @@ impl Dma {
 	}
 }
 
-struct MemoryMappedIO {
+pub struct MemoryMappedIO {
 	mem : *mut u32,
 	words : usize,
 }

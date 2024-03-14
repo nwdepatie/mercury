@@ -4,6 +4,8 @@ use rosrust;
 use rosrust_msg::geometry_msgs::Twist;
 use std::sync::RwLock;
 pub mod motor_model;
+pub mod zynq;
+use zynq::axitimer::AXITimer;
 use self::motor_model::DriveMotorModel;
 
 pub struct DriveController {
