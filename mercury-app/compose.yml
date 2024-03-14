@@ -7,7 +7,7 @@ services:
       ros_network:
         ipv4_address: 172.28.1.2
 
-  rust-builder:
+  mercury_app:
     build: .
     command: /bin/bash
     privileged: true

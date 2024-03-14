@@ -5,8 +5,13 @@ use rosrust_msg::geometry_msgs::Twist;
 use std::sync::RwLock;
 pub mod motor_model;
 pub mod zynq;
-use zynq::axitimer::AXITimer;
+use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
 use self::motor_model::DriveMotorModel;
+
+const TIMER_FRONT_RIGHT_ADDR : u32 = 0x0;
+const TIMER_FRONT_LEFT_ADDR : u32 = 0x0;
+const TIMER_BACK_RIGHT_ADDR : u32 = 0x0;
+const TIMER_BACK_LEFT_ADDR : u32 = 0x0;
 
 pub struct DriveController {
 	model : DriveMotorModel,
@@ -67,11 +72,16 @@ impl DriveController {
 		self.send_motor_commands();
 	}
 }
-s
+
 fn main()
 {
 	/* Initialize ROS node */
 	rosrust::init("drive_sub");
+
+	let pwm_front_right = AXITimer::new(TIMER_FRONT_RIGHT_ADDR, SIZEOF_AXITIMER_REG);
+	let pwm_front_left = AXITimer::new(TIMER_FRONT_LEFT_ADDR, SIZEOF_AXITIMER_REG);
+	let pwm_back_right = AXITimer::new(TIMER_BACK_RIGHT_ADDR, SIZEOF_AXITIMER_REG);
+	let pwm_back_left = AXITimer::new(TIMER_BACK_LEFT_ADDR, SIZEOF_AXITIMER_REG);
 
 	let drive_ctrl = DriveController::new();
 

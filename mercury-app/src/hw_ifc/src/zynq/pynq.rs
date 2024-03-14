@@ -193,7 +193,7 @@ pub struct MemoryMappedIO {
 }
 
 impl MemoryMappedIO {
-	fn map(phys_addr : u32, length : u32) -> Self {
+	pub fn map(phys_addr : u32, length : u32) -> Self {
 		let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) } as u32;
 		assert!(phys_addr % page_size == 0, "Only page boundary aligned IO is supported!");
 		let phys_mem = CString::new("/dev/mem").unwrap();

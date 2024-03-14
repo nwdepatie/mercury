@@ -25,7 +25,3 @@ path = "src/drive_pub.rs"
 [[bin]]
 name = "drive_sub"
 path = "src/drive_sub.rs"
-
-[[bin]]
-name = "loader"
-path = "src/load.rs"
