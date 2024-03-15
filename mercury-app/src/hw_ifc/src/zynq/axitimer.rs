@@ -38,7 +38,7 @@ impl AXITimer {
     }
 
     /* Set the PWM duty cycle and period */
-    pub fn start_pwm(&self, period : f32, duty_cycle : f32)
+    pub fn start_pwm(&mut self, period : f32, duty_cycle : f32)
     {
         /* Stop Timer 0 and Timer 1 */
         self.mapped_mem[TCSR0_OFFSET] = 0;
