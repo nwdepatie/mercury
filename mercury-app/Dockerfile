@@ -19,6 +19,8 @@ RUN rustup target add armv7-unknown-linux-gnueabihf
 # Copy files to image
 COPY . .
 
+RUN echo "source /opt/ros/noetic/setup.bash" > ~/.bashrc
+
 SHELL ["/bin/bash", "-c"]
 
 WORKDIR /home/proj

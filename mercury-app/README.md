@@ -8,13 +8,11 @@ I've included a Dockerfile and Docker Compose for maintaining any system environ
 
 To easily build the project:
 1. `docker compose run --rm --build mercury_app`
-2. `source /opt/ros/noetic/setup.bash`
-3. `catkin_make`
+2. `catkin_make`
 
 ## Instructions for Testing
 
 If you want to actually interact with the ROS Core, follow the commands below:
 1. `docker compose up --build -d`
 2. `docker exec -it mercury-app-rust-builder-1 /bin/bash`
-3. `source /opt/ros/noetic/setup.bash`
-4. `catkin_make`
+3. `catkin_make`
