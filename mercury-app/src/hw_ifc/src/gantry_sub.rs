@@ -5,9 +5,8 @@ use rosrust_msg::geometry_msgs::Twist;
 use std::sync::RwLock;
 
 pub mod msg {
-    rosrust::rosmsg_include!(gantry/calibrate);
+    rosrust::rosmsg_include!(hw_srv / calibrate);
 }
-
 
 pub struct GantryController {
 	model : GantryModel,
@@ -91,10 +90,10 @@ fn main()
 	/**
 	 * Create service
 	 */
-	let _service_raii = rosrust::service::<msg::gantry::calibrate, _>("/services/gantry/calibrate", move |req| {
+	let _service_raii = rosrust::service::<rosrust_msg::hw_srv::calibrate, _>("/services/gantry/calibrate", move |req| {
 		gantry_ctrl.command_callback(req);
 
-		Ok(msg::gantry::calibrate { sum })
+		Ok(rosrust_msg::hw_srv::calibrateRes{ true })
 	})
 	.unwrap();
 

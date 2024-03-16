@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     gcc-arm-linux-gnueabihf \
     g++-arm-linux-gnueabihf \
-    python3-catkin-tools
+    python3-catkin-tools \
+    tmux
 
 # Install and setup rust
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y

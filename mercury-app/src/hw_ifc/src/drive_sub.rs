@@ -1,5 +1,4 @@
 /* Subscriber for Carrying out Commands for Chassis Drive Motors */
-
 use rosrust;
 use rosrust_msg::geometry_msgs::Twist;
 use std::sync::RwLock;
@@ -7,6 +6,7 @@ pub mod motor_model;
 pub mod zynq;
 use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
 use self::motor_model::DriveMotorModel;
+use std::sync::Mutex;
 
 const TIMER_FRONT_RIGHT_ADDR : u32 = 0x0;
 const TIMER_FRONT_LEFT_ADDR : u32 = 0x0;
@@ -15,15 +15,23 @@ const TIMER_BACK_LEFT_ADDR : u32 = 0x0;
 
 pub struct DriveController {
 	model : DriveMotorModel,
-	max_linear_vel: f64,	/* meters per second  */
-	max_angular_vel: f64,	/* radians per second  */
+	max_linear_vel : f64,	/* meters per second  */
+	max_angular_vel : f64,	/* radians per second  */
 	velocities: RwLock<(f64, f64)>, /* Left and right velocities */
+	//timer_fr : Mutex<AXITimer>,
+	//timer_fl : Mutex<AXITimer>,
+	//timer_br : Mutex<AXITimer>,
+	//timer_bl : Mutex<AXITimer>,
 }
 
 impl DriveController {
-	pub fn new() -> Self
+	pub fn new(//timer_fr : AXITimer,
+			   //timer_fl : AXITimer,
+			   //timer_br : AXITimer,
+			   //timer_bl : AXITimer
+			   ) -> Self
 	{
-		// Parameters
+		/* Parameters */
 		let wheel_base = rosrust::param("~wheel_base").unwrap().get().unwrap_or(0.2);
 		let wheel_radius = rosrust::param("~wheel_radius").unwrap().get().unwrap_or(0.095);
 		let max_velocity_meters_per_second = rosrust::param("~max_velocity_meters_per_second").unwrap().get().unwrap_or(10.0);
@@ -33,7 +41,11 @@ impl DriveController {
 			model : DriveMotorModel::new(wheel_base, wheel_radius),
 			max_linear_vel : max_velocity_meters_per_second,
 			max_angular_vel : max_angular_velocity_rad_per_second,
-			velocities: RwLock::new((0.0, 0.0)),
+			velocities : RwLock::new((0.0, 0.0)),
+			//timer_fr : timer_fr.into(),
+			//timer_fl : timer_fl.into(),
+			//timer_br : timer_br.into(),
+			//timer_bl : timer_bl.into(),
 		}
 	}
 
@@ -51,14 +63,15 @@ impl DriveController {
 
 	fn send_motor_commands(&self)
 	{
-		let velocities = self.velocities.read().unwrap();
+		//let velocities = self.velocities.read().unwrap();
 
 		// TODO Make hardware call
+		println!("Callback works!!!");
 
-		rosrust::ros_info!("Left Vel/Command: {}, Right Vel/Command: {}", velocities.0, velocities.1);
+		//rosrust::ros_info!("Left Vel/Command: {}, Right Vel/Command: {}", velocities.0, velocities.1);
 	}
 
-	pub fn command_callback(&self, data: Twist)
+	pub fn command_callback(&self, data: rosrust_msg::geometry_msgs::Twist)
 	{
 		let linear_velocity = self.clamp_linear_speed(data.linear.x);
 		let angular_velocity = self.clamp_angular_speed(data.angular.z);
@@ -66,7 +79,7 @@ impl DriveController {
 		let left_velocity = linear_velocity - (angular_velocity * self.model.wheel_base() / 2.0);
 		let right_velocity = linear_velocity + (angular_velocity * self.model.wheel_base() / 2.0);
 
-		// Store the velocities safely
+		/* Store the velocities safely */
 		let mut velocities = self.velocities.write().unwrap();
 		*velocities = (left_velocity, right_velocity);
 		self.send_motor_commands();
@@ -78,12 +91,20 @@ fn main()
 	/* Initialize ROS node */
 	rosrust::init("drive_sub");
 
-	let pwm_front_right = AXITimer::new(TIMER_FRONT_RIGHT_ADDR, SIZEOF_AXITIMER_REG);
-	let pwm_front_left = AXITimer::new(TIMER_FRONT_LEFT_ADDR, SIZEOF_AXITIMER_REG);
-	let pwm_back_right = AXITimer::new(TIMER_BACK_RIGHT_ADDR, SIZEOF_AXITIMER_REG);
-	let pwm_back_left = AXITimer::new(TIMER_BACK_LEFT_ADDR, SIZEOF_AXITIMER_REG);
+	rosrust::ros_info!("Drive Subscriber initialized...");
 
-	let drive_ctrl = DriveController::new();
+	//let pwm_front_right = AXITimer::new(TIMER_FRONT_RIGHT_ADDR, SIZEOF_AXITIMER_REG);
+	//let pwm_front_left = AXITimer::new(TIMER_FRONT_LEFT_ADDR, SIZEOF_AXITIMER_REG);
+	//let pwm_back_right = AXITimer::new(TIMER_BACK_RIGHT_ADDR, SIZEOF_AXITIMER_REG);
+	//let pwm_back_left = AXITimer::new(TIMER_BACK_LEFT_ADDR, SIZEOF_AXITIMER_REG);
+
+	let drive_ctrl = DriveController::new(//pwm_front_right,
+										  //pwm_front_left,
+										  //pwm_back_right,
+										  //pwm_back_left
+										 );
+
+	rosrust::ros_info!("Drive Controller Created...");
 
 	/*
 	 * Create subscriber
@@ -92,19 +113,15 @@ fn main()
 	let _subscriber_info = rosrust::subscribe_with_ids(
 		"/drive/cmd_vel",
 		2,
-		move |v: Twist, _caller_id: &str| {
+		move |v: rosrust_msg::geometry_msgs::Twist, _caller_id: &str| {
 			drive_ctrl.command_callback(v);
 		}
 	)
 	.unwrap();
 
-	let log_names = rosrust::param("~log_names").unwrap()
-										 .get()
-										 .unwrap_or(false);
-	if log_names {
-		while rosrust::is_ok() {
-			/* Spin forever, we only execute things on callbacks from here */
-			rosrust::spin();
-		}
+	rosrust::ros_info!("Drive callback linked...");
+
+	while rosrust::is_ok() {
+		rosrust::spin();
 	}
 }
