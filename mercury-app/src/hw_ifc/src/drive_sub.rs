@@ -2,22 +2,23 @@
 
 use rosrust;
 use rosrust_msg::geometry_msgs::Twist;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 pub mod motor_model;
 pub mod zynq;
 use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
 use self::motor_model::DriveMotorModel;
 
-const TIMER_FRONT_RIGHT_ADDR : u32 = 0x4280_0000;
-const TIMER_FRONT_LEFT_ADDR : u32 = 0x4281_0000;
-const TIMER_BACK_RIGHT_ADDR : u32 = 0x4282_0000;
-const TIMER_BACK_LEFT_ADDR : u32 = 0x4283_0000;
+const TIMER_FRONT_RIGHT_ADDR : u32 = 0x4001_0000;
+const TIMER_FRONT_LEFT_ADDR : u32 = 0x4002_0000;
+const TIMER_BACK_RIGHT_ADDR : u32 = 0x4003_0000;
+const TIMER_BACK_LEFT_ADDR : u32 = 0x4004_0000;
+
+const MAX_SPEED : f64 = 10.0;
 
 pub struct DriveController{
 	model : DriveMotorModel,
 	max_linear_vel: f64,	/* meters per second  */
 	max_angular_vel: f64,	/* radians per second  */
-	velocities: RwLock<(f64, f64)>, /* Left and right velocities */
 	pwm_front_left: Arc<Mutex<AXITimer>>,
     pwm_front_right: Arc<Mutex<AXITimer>>,
     pwm_back_left: Arc<Mutex<AXITimer>>,
@@ -40,7 +41,6 @@ impl DriveController {
 			model : DriveMotorModel::new(wheel_base, wheel_radius),
 			max_linear_vel : max_velocity_meters_per_second,
 			max_angular_vel : max_angular_velocity_rad_per_second,
-			velocities: RwLock::new((0.0, 0.0)),
 			pwm_front_left: pwm_front_left,
 			pwm_front_right: pwm_front_right,
 			pwm_back_left: pwm_back_left,
@@ -50,8 +50,7 @@ impl DriveController {
 
 	fn clamp_linear_speed(&self, speed: f64) -> f64
 	{
-		speed.max(-self.max_linear_vel)
-			 .min(0.0)
+		speed.max(-self.max_linear_vel).min(0.0)
 	}
 
 	fn clamp_angular_speed(&self, speed: f64) -> f64
@@ -60,31 +59,47 @@ impl DriveController {
 			 .min(0.0)
 	}
 
-	fn send_motor_commands(&self)
+	fn send_motor_commands(&self, left_pwm : f64, right_pwm : f64)
 	{
-		let velocities = self.velocities.read().unwrap();
+		let left_pwm_u32 = left_pwm.clamp(0.0, u32::MAX as f64) as u32;
+    	let right_pwm_u32 = right_pwm.clamp(0.0, u32::MAX as f64) as u32;
 
 		/* Set PWM Duty Cycles */
-		self.pwm_front_left.lock().unwrap().start_pwm(100, 25);
-		self.pwm_front_right.lock().unwrap().start_pwm(100, 25);
-		self.pwm_back_left.lock().unwrap().start_pwm(100, 25);
-		self.pwm_back_right.lock().unwrap().start_pwm(100, 25);
+		self.pwm_front_left.lock().unwrap().start_pwm(100, left_pwm_u32);
+		self.pwm_front_right.lock().unwrap().start_pwm(100, right_pwm_u32);
+		self.pwm_back_left.lock().unwrap().start_pwm(100, left_pwm_u32);
+		self.pwm_back_right.lock().unwrap().start_pwm(100, right_pwm_u32);
 
-		rosrust::ros_info!("Left Vel/Command: {}, Right Vel/Command: {}", velocities.0, velocities.1);
+		rosrust::ros_info!("Left Vel/Command: {}, Right Vel/Command: {}", left_pwm_u32, right_pwm_u32);
 	}
 
-	pub fn command_callback(&self, data: Twist)
-	{
-		let linear_velocity = self.clamp_linear_speed(data.linear.x);
-		let angular_velocity = self.clamp_angular_speed(data.angular.z);
+	fn command_callback(&self, twist: Twist) {
+		// Directly take the linear and angular speeds without clamping
+		let linear_speed = twist.linear.x;
+		let angular_speed = twist.angular.z;
 
-		let left_velocity = linear_velocity - (angular_velocity * self.model.wheel_base() / 2.0);
-		let right_velocity = linear_velocity + (angular_velocity * self.model.wheel_base() / 2.0);
+		// Calculate preliminary left and right wheel speeds
+		let mut left_speed = linear_speed - angular_speed;
+		let mut right_speed = linear_speed + angular_speed;
 
-		/* Store the velocities safely */
-		let mut velocities = self.velocities.write().unwrap();
-		*velocities = (left_velocity, right_velocity);
-		self.send_motor_commands();
+		// Find the maximum absolute speed between the two wheels
+		let max_wheel_speed = left_speed.abs().max(right_speed.abs());
+
+		// Normalize wheel speeds if exceeding MAX_SPEED
+		if max_wheel_speed > MAX_SPEED {
+			left_speed = (left_speed / max_wheel_speed) * MAX_SPEED;
+			right_speed = (right_speed / max_wheel_speed) * MAX_SPEED;
+		}
+
+		// Convert normalized wheel speeds to PWM duty cycle and direction
+		let left_pwm = left_speed.abs() * 15.0 / MAX_SPEED;
+		let right_pwm = right_speed.abs() * 15.0 / MAX_SPEED;
+
+		let left_dir = left_speed >= 0.0;
+		let right_dir = right_speed >= 0.0;
+
+		/* Store the velocities */
+		self.send_motor_commands(left_pwm, right_pwm);
 	}
 }
 
@@ -116,13 +131,8 @@ fn main()
 	)
 	.unwrap();
 
-	let log_names = rosrust::param("~log_names").unwrap()
-										 .get()
-										 .unwrap_or(false);
-	if log_names {
-		while rosrust::is_ok() {
-			/* Spin forever, we only execute things on callbacks from here */
-			rosrust::spin();
-		}
+	while rosrust::is_ok() {
+		/* Spin forever, we only execute things on callbacks from here */
+		rosrust::spin();
 	}
 }
