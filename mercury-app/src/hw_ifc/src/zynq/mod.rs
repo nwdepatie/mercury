@@ -1,2 +1,2 @@
 pub mod axitimer;
-mod pynq;
+mod mmio;

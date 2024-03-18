@@ -7,8 +7,9 @@ edition = "2021"
 
 [dependencies]
 libc = "0.2.153"
-rosrust = "0.9.11"
-rosrust_msg = "0.1.7"
+memmap2 = "0.9.4"
+#rosrust = "0.9.11"
+#rosrust_msg = "0.1.7"
 
 [[bin]]
 name = "gantry_pub"
@@ -25,3 +26,7 @@ path = "src/drive_pub.rs"
 [[bin]]
 name = "drive_sub"
 path = "src/drive_sub.rs"
+
+[[bin]]
+name = "pwm_test"
+path = "src/pwm_test.rs"

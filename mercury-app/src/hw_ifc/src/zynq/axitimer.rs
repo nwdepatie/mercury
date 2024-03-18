@@ -1,10 +1,7 @@
-use crate::zynq::pynq::MemoryMappedIO;
-
-/* LED Offsets */
-const CHANNEL_NUM: u8 = 0;
+use crate::zynq::mmio::MemoryMappedIO;
+use std::io::Result;
 
 /* Timer Offsets */
-const AXI_TIMER_BASE : usize = 0x41240000;
 const TCSR0_OFFSET : usize = 0x00;
 const TLR0_OFFSET : usize = 0x04;
 const TCR0_OFFSET : usize = 0x08;
@@ -21,50 +18,64 @@ const TSCR_ENALL : u32 = 1 << 10;
 const TSCR_ARHT1 : u32 = 1 << 4;
 const TSCR_GENT1 : u32 = 1 << 2;
 const TSCR_UDT1 : u32 = 1 << 1;
-const TSCR_ENT0 : u32 = 1 << 7;
+const TSCR_ENT1 : u32 = 1 << 7;
 
-const AXI_CLOCK : f32 = 100000000.0; /* 100MHz */
+const AXI_CLOCK : u32 = 100000; /* 100MHz */
 
 pub struct AXITimer {
-    mapped_mem : MemoryMappedIO,
+    mapped_mem: MemoryMappedIO,
 }
 
 impl AXITimer {
     /* Create a new AXITimer struct */
-    pub fn new(phys_addr : u32, length : u32) -> Self
-    {
-        let mem = MemoryMappedIO::map(phys_addr, length);
-        AXITimer{ mapped_mem : mem }
+    pub fn new(phys_addr: u32, length: u32) -> Result<Self> {
+        // Handle the Result returned by MemoryMappedIO::new
+        let mut mem = MemoryMappedIO::new(phys_addr as usize, length as usize)?;
+
+        // Initialize the timer registers
+        mem.write_u32(TCSR0_OFFSET, 0);
+        mem.write_u32(TCSR1_OFFSET, 0);
+
+        // Enable PWM and other settings for both timers
+        mem.write_u32(TCSR0_OFFSET, mem.read_u32(TCSR0_OFFSET) | TCSR_PWM_ENABLE | TSCR_GENT1 | TSCR_UDT1 | TSCR_ARHT1 | TSCR_ENT1);
+        mem.write_u32(TCSR1_OFFSET, mem.read_u32(TCSR1_OFFSET) | TCSR_PWM_ENABLE | TSCR_GENT1 | TSCR_UDT1 | TSCR_ARHT1 | TSCR_ENT1);
+
+        Ok(AXITimer { mapped_mem: mem })
     }
 
     /* Set the PWM duty cycle and period */
-    pub fn start_pwm(&mut self, period : f32, duty_cycle : f32)
+    pub fn start_pwm(&mut self, period : u32, duty_cycle : u32)
     {
-        /* Stop Timer 0 and Timer 1 */
-        self.mapped_mem[TCSR0_OFFSET] = 0;
-        self.mapped_mem[TCSR1_OFFSET] = 0;
+        self.mapped_mem.write_u32(TCSR0_OFFSET, self.mapped_mem.read_u32(TCSR0_OFFSET) | TCSR_PWM_ENABLE | TSCR_GENT1 | TSCR_UDT1 | TSCR_ARHT1 | TSCR_ENT1);
+        self.mapped_mem.write_u32(TCSR1_OFFSET, self.mapped_mem.read_u32(TCSR1_OFFSET) | TCSR_PWM_ENABLE | TSCR_GENT1 | TSCR_UDT1 | TSCR_ARHT1 | TSCR_ENT1);
 
-        /* Enable PWM mode and start timers */
-        self.mapped_mem[TCSR0_OFFSET] |= TCSR_PWM_ENABLE | TSCR_GENT1 | TSCR_UDT1;
-        self.mapped_mem[TCSR1_OFFSET] |= TCSR_PWM_ENABLE | TSCR_GENT1 | TSCR_UDT1;
+        /* Calculate high time and load into register */
+        let period_reg = ((period & 0x0ffff) *100) as u32;
+        let pulse_reg = ((duty_cycle & 0x07f) * period_reg/100) as u32;
 
-        /* Load period and duty cycle values */
-        let high_time_ms = (duty_cycle / 100.0) * period;
-        let high_time_reg = (high_time_ms * AXI_CLOCK) - 2.0;
-        let period_time_reg = (period * AXI_CLOCK) - 2.0;
-        self.mapped_mem[TLR0_OFFSET] = period_time_reg as u32;
-        self.mapped_mem[TLR1_OFFSET] = high_time_reg as u32;
+        //println!("High Time:\t{}", pulse_reg);
+        //println!("Period Time:\t{}", period_reg);
+
+        self.mapped_mem.write_u32(TLR0_OFFSET, period_reg);
+        //println!("Timer 0 Config after first write:\t{}", self.mapped_mem.read_u32(TLR0_OFFSET));
+        //println!("Timer 1 Config after first write:\t{}", self.mapped_mem.read_u32(TLR1_OFFSET));
+
+        self.mapped_mem.write_u32(TLR1_OFFSET, pulse_reg);
+        //println!("Timer 0 Config after second write:\t{}", self.mapped_mem.read_u32(TLR0_OFFSET));
+        //println!("Timer 1 Config after second write:\t{}", self.mapped_mem.read_u32(TLR1_OFFSET));
 
         /* Load values into timer counters by toggling load registers */
-        self.mapped_mem[TCSR0_OFFSET] |= TCSR_LOAD;
-        self.mapped_mem[TCSR0_OFFSET] &= !TCSR_LOAD;
-        self.mapped_mem[TCSR1_OFFSET] |= TCSR_LOAD;
-        self.mapped_mem[TCSR1_OFFSET] &= !TCSR_LOAD;
-        self.mapped_mem[TCSR0_OFFSET] |= TSCR_ENALL;
+        //self.mapped_mem.write_u32(TCSR0_OFFSET, self.mapped_mem.read_u32(TCSR0_OFFSET) | TCSR_LOAD);
+        //self.mapped_mem.write_u32(TCSR0_OFFSET, self.mapped_mem.read_u32(TCSR0_OFFSET) & !TCSR_LOAD);
+        //self.mapped_mem.write_u32(TCSR1_OFFSET, self.mapped_mem.read_u32(TCSR1_OFFSET) | TCSR_LOAD);
+        //self.mapped_mem.write_u32(TCSR1_OFFSET, self.mapped_mem.read_u32(TCSR1_OFFSET) & !TCSR_LOAD);
+        self.mapped_mem.write_u32(TCSR0_OFFSET, self.mapped_mem.read_u32(TCSR0_OFFSET) | TSCR_ENALL);
 
         // Making sure we are writing what we want
-        println!("Timer 0 Config:\t{}\n", self.mapped_mem[TCSR0_OFFSET]);
-        println!("Timer 1 Config:\t{}\n", self.mapped_mem[TCSR1_OFFSET]);
+        //println!("Timer 0 Config:\t{}", self.mapped_mem.read_u32(TLR0_OFFSET));
+        //println!("Timer 1 Config:\t{}", self.mapped_mem.read_u32(TLR1_OFFSET));
+        //println!("Config 0 Config:\t{}", self.mapped_mem.read_u32(TCSR0_OFFSET));
+        //println!("Config 1 Config:\t{}", self.mapped_mem.read_u32(TCSR1_OFFSET));
 
         return;
     }
