@@ -1,17 +1,18 @@
 /* Subscriber for Carrying out Commands for Chassis Drive Motors */
 
-use rosrust;
 use rosrust_msg::geometry_msgs::Twist;
 use std::sync::{Arc, Mutex};
 pub mod motor_model;
 pub mod zynq;
 use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
+use zynq::axigpio::{AXIGPIO, SIZEOF_AXIGPIO_REG};
 use self::motor_model::DriveMotorModel;
 
-const TIMER_FRONT_RIGHT_ADDR : u32 = 0x4001_0000;
-const TIMER_FRONT_LEFT_ADDR : u32 = 0x4002_0000;
-const TIMER_BACK_RIGHT_ADDR : u32 = 0x4003_0000;
-const TIMER_BACK_LEFT_ADDR : u32 = 0x4004_0000;
+const TIMER_FRONT_RIGHT_ADDR : u32 = 0x4280_0000;
+const TIMER_FRONT_LEFT_ADDR : u32 = 0x4281_0000;
+const TIMER_BACK_RIGHT_ADDR : u32 = 0x4282_0000;
+const TIMER_BACK_LEFT_ADDR : u32 = 0x4283_0000;
+const DIRECTION_GPIO_ADDR : u32 = 0x0000_0000;
 
 const MAX_SPEED : f64 = 10.0;
 
@@ -23,13 +24,15 @@ pub struct DriveController{
     pwm_front_right: Arc<Mutex<AXITimer>>,
     pwm_back_left: Arc<Mutex<AXITimer>>,
     pwm_back_right: Arc<Mutex<AXITimer>>,
+	direction_ctrl: Arc<Mutex<AXIGPIO>>,
 }
 
 impl DriveController {
 	pub fn new(pwm_front_left: Arc<Mutex<AXITimer>>,
 			   pwm_front_right: Arc<Mutex<AXITimer>>,
 			   pwm_back_left: Arc<Mutex<AXITimer>>,
-			   pwm_back_right: Arc<Mutex<AXITimer>>) -> Self
+			   pwm_back_right: Arc<Mutex<AXITimer>>,
+			   direction_ctrl: Arc<Mutex<AXIGPIO>>) -> Self
 	{
 		/* Parameters */
 		let wheel_base = rosrust::param("~wheel_base").unwrap().get().unwrap_or(0.2);
@@ -41,22 +44,12 @@ impl DriveController {
 			model : DriveMotorModel::new(wheel_base, wheel_radius),
 			max_linear_vel : max_velocity_meters_per_second,
 			max_angular_vel : max_angular_velocity_rad_per_second,
-			pwm_front_left: pwm_front_left,
-			pwm_front_right: pwm_front_right,
-			pwm_back_left: pwm_back_left,
-			pwm_back_right: pwm_back_right,
+			pwm_front_left,
+			pwm_front_right,
+			pwm_back_left,
+			pwm_back_right,
+			direction_ctrl,
 		}
-	}
-
-	fn clamp_linear_speed(&self, speed: f64) -> f64
-	{
-		speed.max(-self.max_linear_vel).min(0.0)
-	}
-
-	fn clamp_angular_speed(&self, speed: f64) -> f64
-	{
-		speed.max(-self.max_angular_vel)
-			 .min(0.0)
 	}
 
 	fn send_motor_commands(&self, left_pwm : f64, right_pwm : f64)
@@ -95,8 +88,8 @@ impl DriveController {
 		let left_pwm = left_speed.abs() * 15.0 / MAX_SPEED;
 		let right_pwm = right_speed.abs() * 15.0 / MAX_SPEED;
 
-		let left_dir = left_speed >= 0.0;
-		let right_dir = right_speed >= 0.0;
+		let _left_dir = left_speed >= 0.0;
+		let _right_dir = right_speed >= 0.0;
 
 		/* Store the velocities */
 		self.send_motor_commands(left_pwm, right_pwm);
@@ -112,11 +105,13 @@ fn main()
     let pwm_front_left = Arc::new(Mutex::new(AXITimer::new(TIMER_FRONT_LEFT_ADDR, SIZEOF_AXITIMER_REG).unwrap()));
     let pwm_back_right = Arc::new(Mutex::new(AXITimer::new(TIMER_BACK_RIGHT_ADDR, SIZEOF_AXITIMER_REG).unwrap()));
     let pwm_back_left = Arc::new(Mutex::new(AXITimer::new(TIMER_BACK_LEFT_ADDR, SIZEOF_AXITIMER_REG).unwrap()));
+	let direction_control = Arc::new(Mutex::new(AXIGPIO::new(DIRECTION_GPIO_ADDR, SIZEOF_AXIGPIO_REG).unwrap()));
 
     let drive_ctrl = DriveController::new(pwm_front_right,
                                           pwm_front_left,
                                           pwm_back_right,
-                                          pwm_back_left);
+                                          pwm_back_left,
+										  direction_control);
 
 	/*
 	 * Create subscriber
