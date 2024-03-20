@@ -2,11 +2,11 @@
 
 use rosrust_msg::geometry_msgs::Twist;
 use std::sync::{Arc, Mutex};
-pub mod motor_model;
+pub mod chassis_model;
 pub mod zynq;
 use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
 use zynq::axigpio::{AXIGPIO, SIZEOF_AXIGPIO_REG};
-use self::motor_model::DriveMotorModel;
+use self::chassis_model::{ChassisModel, MotorCtrlCmd};
 
 const TIMER_FRONT_RIGHT_ADDR : u32 = 0x4280_0000;
 const TIMER_FRONT_LEFT_ADDR : u32 = 0x4281_0000;
@@ -14,12 +14,14 @@ const TIMER_BACK_RIGHT_ADDR : u32 = 0x4282_0000;
 const TIMER_BACK_LEFT_ADDR : u32 = 0x4283_0000;
 const DIRECTION_GPIO_ADDR : u32 = 0x4121_0000;
 
-const MAX_SPEED : f64 = 10.0;
+const MAX_LINEAR_SPEED : f64 = 10.0;	/* meters/second */
+const MAX_ANGULAR_SPEED : f64 = 10.0;	/* radians/second */
+const WHEEL_RADIUS : f32 = 10.0;		/* meters */
+const BOT_WIDTH : f32 = 10.0;			/* meters */
+const BOT_LENGTH : f32 = 10.0;			/* meters */
 
 pub struct DriveController{
-	model : DriveMotorModel,
-	max_linear_vel: f64,	/* meters per second  */
-	max_angular_vel: f64,	/* radians per second  */
+	model : ChassisModel,
 	pwm_front_left: Arc<Mutex<AXITimer>>,
     pwm_front_right: Arc<Mutex<AXITimer>>,
     pwm_back_left: Arc<Mutex<AXITimer>>,
@@ -35,15 +37,14 @@ impl DriveController {
 			   direction_ctrl: Arc<Mutex<AXIGPIO>>) -> Self
 	{
 		/* Parameters */
-		let wheel_base = rosrust::param("~wheel_base").unwrap().get().unwrap_or(0.2);
-		let wheel_radius = rosrust::param("~wheel_radius").unwrap().get().unwrap_or(0.095);
-		let max_velocity_meters_per_second = rosrust::param("~max_velocity_meters_per_second").unwrap().get().unwrap_or(10.0);
-		let max_angular_velocity_rad_per_second = rosrust::param("~max_angular_velocity_rad_per_second").unwrap().get().unwrap_or(6.0);
+		let wheel_radius = WHEEL_RADIUS;
+		let bot_width = BOT_WIDTH;
+		let bot_length = BOT_LENGTH;
+		let max_velocity_meters_per_second = MAX_LINEAR_SPEED;
+		let max_angular_velocity_rad_per_second = MAX_ANGULAR_SPEED;
 
 		DriveController {
-			model : DriveMotorModel::new(wheel_base, wheel_radius),
-			max_linear_vel : max_velocity_meters_per_second,
-			max_angular_vel : max_angular_velocity_rad_per_second,
+			model : ChassisModel::new(bot_width, bot_length, wheel_radius, max_velocity_meters_per_second),
 			pwm_front_left,
 			pwm_front_right,
 			pwm_back_left,
@@ -71,28 +72,11 @@ impl DriveController {
 		let linear_speed = twist.linear.x;
 		let angular_speed = twist.angular.z;
 
-		/* Calculate preliminary left and right wheel speeds */
-		let mut left_speed = linear_speed - angular_speed;
-		let mut right_speed = linear_speed + angular_speed;
-
-		/* Find the maximum absolute speed between the two wheels */
-		let max_wheel_speed = left_speed.abs().max(right_speed.abs());
-
-		/* Normalize wheel speeds if exceeding MAX_SPEED */
-		if max_wheel_speed > MAX_SPEED {
-			left_speed = (left_speed / max_wheel_speed) * MAX_SPEED;
-			right_speed = (right_speed / max_wheel_speed) * MAX_SPEED;
-		}
-
-		/* Convert normalized wheel speeds to PWM duty cycle and direction */
-		let left_pwm = left_speed.abs() * 15.0 / MAX_SPEED;
-		let right_pwm = right_speed.abs() * 15.0 / MAX_SPEED;
-
-		let left_dir = left_speed >= 0.0;
-		let right_dir = right_speed >= 0.0;
+		/* Run Desired Speeds through Model of Chassis */
+		let motor_cmds = self.model.calc_wheel_speeds(linear_speed, angular_speed);
 
 		/* Make hardware call */
-		self.send_motor_commands(left_pwm, right_pwm, left_dir, right_dir);
+		self.send_motor_commands(motor_cmds);
 	}
 }
 
