@@ -14,7 +14,8 @@ jobs:
       - name: Build Catkin WS
         run: |
           docker exec mercury-app-mercury_app-1 /bin/bash -c \
-          "cd /home/proj && catkin_make"
+          "cd /home/proj && source /opt/ros/noetic/setup.bash && \
+          catkin_make"
 
       - name: Cleanup Docker
         run: |
