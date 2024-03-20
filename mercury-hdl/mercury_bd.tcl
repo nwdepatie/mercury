@@ -214,16 +214,6 @@ proc create_hier_cell_drive { parentCell nameHier } {
   create_bd_pin -dir O -from 0 -to 0 Drive_DIR_1
   create_bd_pin -dir O -from 0 -to 0 Drive_DIR_3
 
-  # Create instance: xlslice_0, and set properties
-  set xlslice_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice:1.0 xlslice_0 ]
-  set_property CONFIG.DIN_TO {1} $xlslice_0
-
-
-  # Create instance: xlslice_1, and set properties
-  set xlslice_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice:1.0 xlslice_1 ]
-  set_property CONFIG.DIN_TO {2} $xlslice_1
-
-
   # Create instance: axi_timer_0, and set properties
   set axi_timer_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_timer:2.0 axi_timer_0 ]
 
@@ -240,10 +230,17 @@ proc create_hier_cell_drive { parentCell nameHier } {
   set axi_gpio_2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 axi_gpio_2 ]
   set_property -dict [list \
     CONFIG.C_ALL_OUTPUTS {1} \
+    CONFIG.C_ALL_OUTPUTS_2 {1} \
     CONFIG.C_DOUT_DEFAULT {0xFFFFFFFF} \
-    CONFIG.C_IS_DUAL {0} \
+    CONFIG.C_IS_DUAL {1} \
   ] $axi_gpio_2
 
+
+  # Create instance: xlslice_0, and set properties
+  set xlslice_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice:1.0 xlslice_0 ]
+
+  # Create instance: xlslice_1, and set properties
+  set xlslice_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice:1.0 xlslice_1 ]
 
   # Create interface connections
   connect_bd_intf_net -intf_net Conn1 [get_bd_intf_pins axi_timer_1/S_AXI] [get_bd_intf_pins S_AXI]
@@ -253,7 +250,8 @@ proc create_hier_cell_drive { parentCell nameHier } {
   connect_bd_intf_net -intf_net Conn5 [get_bd_intf_pins axi_timer_0/S_AXI] [get_bd_intf_pins S_AXI4]
 
   # Create port connections
-  connect_bd_net -net axi_gpio_2_gpio_io_o [get_bd_pins axi_gpio_2/gpio_io_o] [get_bd_pins xlslice_0/Din] [get_bd_pins xlslice_1/Din]
+  connect_bd_net -net axi_gpio_2_gpio2_io_o [get_bd_pins axi_gpio_2/gpio2_io_o] [get_bd_pins xlslice_1/Din]
+  connect_bd_net -net axi_gpio_2_gpio_io_o [get_bd_pins axi_gpio_2/gpio_io_o] [get_bd_pins xlslice_0/Din]
   connect_bd_net -net axi_timer_0_pwm0 [get_bd_pins axi_timer_0/pwm0] [get_bd_pins DAC_1_INA]
   connect_bd_net -net axi_timer_1_pwm0 [get_bd_pins axi_timer_1/pwm0] [get_bd_pins DAC_1_INB]
   connect_bd_net -net axi_timer_2_pwm0 [get_bd_pins axi_timer_2/pwm0] [get_bd_pins DAC_2_INA]
@@ -683,10 +681,10 @@ proc create_root_design { parentCell } {
   set Sensor_IO_2 [ create_bd_port -dir O -from 0 -to 0 Sensor_IO_2 ]
   set Sensor_IO_3 [ create_bd_port -dir O -from 0 -to 0 Sensor_IO_3 ]
   set Sensor_IO_5 [ create_bd_port -dir O -from 0 -to 0 Sensor_IO_5 ]
-  set Drive_DIR_2 [ create_bd_port -dir O -from 0 -to 0 Drive_DIR_2 ]
-  set Drive_DIR_1 [ create_bd_port -dir O -from 0 -to 0 Drive_DIR_1 ]
-  set Drive_DIR_3 [ create_bd_port -dir O -from 0 -to 0 Drive_DIR_3 ]
-  set Drive_DIR_4 [ create_bd_port -dir O -from 0 -to 0 Drive_DIR_4 ]
+  set Drive_DIR_1 [ create_bd_port -dir O -from 0 -to 0 -type data Drive_DIR_1 ]
+  set Drive_DIR_2 [ create_bd_port -dir O -from 0 -to 0 -type data Drive_DIR_2 ]
+  set Drive_DIR_3 [ create_bd_port -dir O -from 0 -to 0 -type data Drive_DIR_3 ]
+  set Drive_DIR_4 [ create_bd_port -dir O -from 0 -to 0 -type data Drive_DIR_4 ]
 
   # Create instance: processing_system7_0, and set properties
   set processing_system7_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 processing_system7_0 ]
@@ -1069,6 +1067,7 @@ proc create_root_design { parentCell } {
   connect_bd_intf_net -intf_net processing_system7_0_M_AXI_GP1 [get_bd_intf_pins processing_system7_0/M_AXI_GP1] [get_bd_intf_pins axi_interconnect_0/S01_AXI]
 
   # Create port connections
+  connect_bd_net -net Drive_Dir1 [get_bd_pins drive/DAC_2_INB] [get_bd_ports DAC_2_INB]
   connect_bd_net -net GPIO_Slicer_GPIO_buf_5 [get_bd_pins GPIO_Slicer/GPIO_buf_5] [get_bd_ports M0_1]
   connect_bd_net -net GPIO_Slicer_GPIO_buf_6 [get_bd_pins GPIO_Slicer/GPIO_buf_6] [get_bd_ports M1_1]
   connect_bd_net -net GPIO_Slicer_GPIO_buf_7 [get_bd_pins GPIO_Slicer/GPIO_buf_7] [get_bd_ports CONFIG_1]
@@ -1087,12 +1086,11 @@ proc create_root_design { parentCell } {
   connect_bd_net -net drive_DAC_1_INA [get_bd_pins drive/DAC_1_INA] [get_bd_ports DAC_1_INA]
   connect_bd_net -net drive_DAC_1_INB [get_bd_pins drive/DAC_1_INB] [get_bd_ports DAC_1_INB]
   connect_bd_net -net drive_DAC_2_INA [get_bd_pins drive/DAC_2_INA] [get_bd_ports DAC_2_INA]
-  connect_bd_net -net drive_DAC_2_INB [get_bd_pins drive/DAC_2_INB] [get_bd_ports DAC_2_INB]
+  connect_bd_net -net drive_Drive_DIR_1 [get_bd_pins drive/Drive_DIR_1] [get_bd_ports Drive_DIR_1] [get_bd_ports Drive_DIR_2]
+  connect_bd_net -net drive_Drive_DIR_3 [get_bd_pins drive/Drive_DIR_3] [get_bd_ports Drive_DIR_3] [get_bd_ports Drive_DIR_4]
   connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins rst_ps7_0_100M/slowest_sync_clk] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/M_AXI_GP1_ACLK] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/M01_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins axi_interconnect_0/S01_ACLK] [get_bd_pins axi_interconnect_0/M02_ACLK] [get_bd_pins axi_interconnect_0/M03_ACLK] [get_bd_pins axi_interconnect_0/M04_ACLK] [get_bd_pins axi_interconnect_0/M05_ACLK] [get_bd_pins axi_interconnect_0/M06_ACLK] [get_bd_pins axi_interconnect_0/M07_ACLK] [get_bd_pins axi_interconnect_0/M08_ACLK] [get_bd_pins axi_interconnect_0/M09_ACLK] [get_bd_pins axi_gpio_0/s_axi_aclk] [get_bd_pins axi_gpio_1/s_axi_aclk] [get_bd_pins drive/s_axi_aclk]
   connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins processing_system7_0/FCLK_RESET0_N] [get_bd_pins rst_ps7_0_100M/ext_reset_in]
   connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins rst_ps7_0_100M/peripheral_aresetn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/M01_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_interconnect_0/S01_ARESETN] [get_bd_pins axi_interconnect_0/M02_ARESETN] [get_bd_pins axi_interconnect_0/M03_ARESETN] [get_bd_pins axi_interconnect_0/M04_ARESETN] [get_bd_pins axi_interconnect_0/M05_ARESETN] [get_bd_pins axi_interconnect_0/M06_ARESETN] [get_bd_pins axi_interconnect_0/M07_ARESETN] [get_bd_pins axi_interconnect_0/M08_ARESETN] [get_bd_pins axi_interconnect_0/M09_ARESETN] [get_bd_pins axi_gpio_0/s_axi_aresetn] [get_bd_pins axi_gpio_1/s_axi_aresetn] [get_bd_pins drive/s_axi_aresetn]
-  connect_bd_net -net xlconstant_0_dout [get_bd_pins drive/Drive_DIR_1] [get_bd_ports Drive_DIR_1] [get_bd_ports Drive_DIR_2]
-  connect_bd_net -net xlconstant_1_dout [get_bd_pins drive/Drive_DIR_3] [get_bd_ports Drive_DIR_3] [get_bd_ports Drive_DIR_4]
 
   # Create address segments
   assign_bd_address -dict [list offset 0x7FFF8000 range 0x00008000 offset 0x80000000 range 0x00008000] -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axi_gpio_0/S_AXI/Reg] -force

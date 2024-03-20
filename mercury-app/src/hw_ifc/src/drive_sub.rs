@@ -12,7 +12,7 @@ const TIMER_FRONT_RIGHT_ADDR : u32 = 0x4280_0000;
 const TIMER_FRONT_LEFT_ADDR : u32 = 0x4281_0000;
 const TIMER_BACK_RIGHT_ADDR : u32 = 0x4282_0000;
 const TIMER_BACK_LEFT_ADDR : u32 = 0x4283_0000;
-const DIRECTION_GPIO_ADDR : u32 = 0x0000_0000;
+const DIRECTION_GPIO_ADDR : u32 = 0x4121_0000;
 
 const MAX_SPEED : f64 = 10.0;
 
@@ -67,32 +67,32 @@ impl DriveController {
 	}
 
 	fn command_callback(&self, twist: Twist) {
-		// Directly take the linear and angular speeds without clamping
+		/* Directly take the linear and angular speeds without clamping */
 		let linear_speed = twist.linear.x;
 		let angular_speed = twist.angular.z;
 
-		// Calculate preliminary left and right wheel speeds
+		/* Calculate preliminary left and right wheel speeds */
 		let mut left_speed = linear_speed - angular_speed;
 		let mut right_speed = linear_speed + angular_speed;
 
-		// Find the maximum absolute speed between the two wheels
+		/* Find the maximum absolute speed between the two wheels */
 		let max_wheel_speed = left_speed.abs().max(right_speed.abs());
 
-		// Normalize wheel speeds if exceeding MAX_SPEED
+		/* Normalize wheel speeds if exceeding MAX_SPEED */
 		if max_wheel_speed > MAX_SPEED {
 			left_speed = (left_speed / max_wheel_speed) * MAX_SPEED;
 			right_speed = (right_speed / max_wheel_speed) * MAX_SPEED;
 		}
 
-		// Convert normalized wheel speeds to PWM duty cycle and direction
+		/* Convert normalized wheel speeds to PWM duty cycle and direction */
 		let left_pwm = left_speed.abs() * 15.0 / MAX_SPEED;
 		let right_pwm = right_speed.abs() * 15.0 / MAX_SPEED;
 
-		let _left_dir = left_speed >= 0.0;
-		let _right_dir = right_speed >= 0.0;
+		let left_dir = left_speed >= 0.0;
+		let right_dir = right_speed >= 0.0;
 
-		/* Store the velocities */
-		self.send_motor_commands(left_pwm, right_pwm);
+		/* Make hardware call */
+		self.send_motor_commands(left_pwm, right_pwm, left_dir, right_dir);
 	}
 }
 
