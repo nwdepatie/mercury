@@ -26,7 +26,3 @@ path = "src/drive_pub.rs"
 [[bin]]
 name = "drive_sub"
 path = "src/drive_sub.rs"
-
-[[bin]]
-name = "pwm_test"
-path = "src/pwm_test.rs"
