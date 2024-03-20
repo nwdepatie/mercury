@@ -14,8 +14,8 @@ jobs:
       - name: Build Catkin WS
         run: |
           docker exec mercury-app-mercury_app-1 /bin/bash -c \
-          "cd /home/proj && ls"
+          "cd /home/proj && catkin_make"
 
       - name: Cleanup Docker
         run: |
-          cd mercury_app && docker compose down
+          cd mercury-app && docker compose down
