@@ -1,22 +1,22 @@
 use crate::zynq::mmio::MemoryMappedIO;
 use std::io::Result;
 
-pub const SIZEOF_AXIGPIO_REG : u32 = 0x32;
+pub const SIZEOF_AXIGPIO_REG: u32 = 0x32;
 
 pub enum GPIODirection {
     GpioOutput = 0,
-    GpioInput
+    GpioInput,
 }
 
 pub enum GPIOChannel {
     GpioChannel1,
-    GpioChannel2
+    GpioChannel2,
 }
 
-const GPIO_DATA : usize = 0x0000;
-const GPIO_TRI : usize = 0x0004;
-const GPIO2_DATA : usize = 0x0008;
-const GPIO2_TRI : usize = 0x000C;
+const GPIO_DATA: usize = 0x0000;
+const GPIO_TRI: usize = 0x0004;
+const GPIO2_DATA: usize = 0x0008;
+const GPIO2_TRI: usize = 0x000C;
 
 /// Unused Registers
 //const GIER : usize = 0x011C;
@@ -39,7 +39,7 @@ impl AXIGPIO {
         Ok(AXIGPIO { mapped_mem: mem })
     }
 
-    pub fn set_dir(&mut self, direction : GPIODirection, channel : GPIOChannel) {
+    pub fn set_dir(&mut self, direction: GPIODirection, channel: GPIOChannel) {
         let reg = match channel {
             GPIOChannel::GpioChannel1 => GPIO_TRI,
             GPIOChannel::GpioChannel2 => GPIO2_TRI,
@@ -48,7 +48,7 @@ impl AXIGPIO {
         self.mapped_mem.write_u32(reg, direction as u32);
     }
 
-    pub fn write_gpio(&mut self, val : u32, channel : GPIOChannel) {
+    pub fn write_gpio(&mut self, val: u32, channel: GPIOChannel) {
         let reg = match channel {
             GPIOChannel::GpioChannel1 => GPIO_DATA,
             GPIOChannel::GpioChannel2 => GPIO2_DATA,
@@ -56,5 +56,4 @@ impl AXIGPIO {
 
         self.mapped_mem.write_u32(reg, val);
     }
-
 }

@@ -17,15 +17,16 @@ impl MemoryMappedIO {
     /// * `length` - The length of the memory region to map.
     pub fn new(phys_addr: usize, length: usize) -> Result<Self> {
         let file = OpenOptions::new()
-                            .read(true)
-                            .write(true)
-                            .create(true)
-                            .open("/dev/mem")?;
+            .read(true)
+            .write(true)
+            .create(true)
+            .open("/dev/mem")?;
 
         let page_size = 4096;
         let aligned_phys_addr = phys_addr & !(page_size - 1);
         let offset_within_page = phys_addr - aligned_phys_addr;
-        let aligned_length = ((length + offset_within_page + page_size - 1) / page_size) * page_size;
+        let aligned_length =
+            ((length + offset_within_page + page_size - 1) / page_size) * page_size;
 
         let mmap = unsafe {
             MmapOptions::new()
