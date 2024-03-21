@@ -1,0 +1,22 @@
+name: Build
+on: [push]
+jobs:
+  run-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Docker
+        run: cd mercury-app && docker compose up --build -d mercury_app
+
+      - name: Build Catkin WS
+        run: |
+          docker exec mercury-app-mercury_app-1 /bin/bash -c \
+          "cd /home/proj && source /opt/ros/noetic/setup.bash && \
+          catkin_make"
+
+      - name: Cleanup Docker
+        run: |
+          cd mercury-app && docker compose down
