@@ -1,3 +1,5 @@
+/* Model Describing the Behavior of the Chassis */
+
 use std::f64::consts::PI;
 use std::ops::{Index, IndexMut};
 

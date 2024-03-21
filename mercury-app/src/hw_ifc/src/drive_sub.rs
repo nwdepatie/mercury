@@ -20,22 +20,25 @@ const WHEEL_RADIUS: f64 = 10.0; /* meters */
 const BOT_WIDTH: f32 = 10.0; /* meters */
 const BOT_LENGTH: f32 = 10.0; /* meters */
 
+type PWMController = Arc<Mutex<AXITimer>>;
+type DirectionController = Arc<Mutex<AXIGPIO>>;
+
 pub struct DriveController {
     model: ChassisModel,
-    pwm_front_left: Arc<Mutex<AXITimer>>,
-    pwm_front_right: Arc<Mutex<AXITimer>>,
-    pwm_back_left: Arc<Mutex<AXITimer>>,
-    pwm_back_right: Arc<Mutex<AXITimer>>,
-    direction_ctrl: Arc<Mutex<AXIGPIO>>,
+    pwm_front_left: PWMController,
+    pwm_front_right: PWMController,
+    pwm_back_left: PWMController,
+    pwm_back_right: PWMController,
+    direction_ctrl: DirectionController,
 }
 
 impl DriveController {
     pub fn new(
-        pwm_front_left: Arc<Mutex<AXITimer>>,
-        pwm_front_right: Arc<Mutex<AXITimer>>,
-        pwm_back_left: Arc<Mutex<AXITimer>>,
-        pwm_back_right: Arc<Mutex<AXITimer>>,
-        direction_ctrl: Arc<Mutex<AXIGPIO>>,
+        pwm_front_left: PWMController,
+        pwm_front_right: PWMController,
+        pwm_back_left: PWMController,
+        pwm_back_right: PWMController,
+        direction_ctrl: DirectionController,
     ) -> Self {
         /* Parameters */
         let wheel_radius = WHEEL_RADIUS;
