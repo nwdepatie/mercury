@@ -1,3 +1,3 @@
-pub mod axitimer;
 pub mod axigpio;
+pub mod axitimer;
 mod mmio;
