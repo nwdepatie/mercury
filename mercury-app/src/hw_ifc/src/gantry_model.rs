@@ -3,9 +3,9 @@
 use std::ops::{Index, IndexMut};
 
 pub enum GantryAxes {
-    GantryX,
-    GantryY,
-    GantryZ,
+    X,
+    Y,
+    Z,
 }
 
 pub struct StepperCtrlCmd {
@@ -24,9 +24,9 @@ impl Index<GantryAxes> for StepperCtrlCmdGroup {
 
     fn index(&self, side: GantryAxes) -> &Self::Output {
         match side {
-            GantryAxes::GantryX => &self.x,
-            GantryAxes::GantryY => &self.y,
-            GantryAxes::GantryZ => &self.z,
+            GantryAxes::X => &self.x,
+            GantryAxes::Y => &self.y,
+            GantryAxes::Z => &self.z,
         }
     }
 }
@@ -34,9 +34,9 @@ impl Index<GantryAxes> for StepperCtrlCmdGroup {
 impl IndexMut<GantryAxes> for StepperCtrlCmdGroup {
     fn index_mut(&mut self, side: GantryAxes) -> &mut Self::Output {
         match side {
-            GantryAxes::GantryX => &mut self.x,
-            GantryAxes::GantryY => &mut self.y,
-            GantryAxes::GantryZ => &mut self.z,
+            GantryAxes::X => &mut self.x,
+            GantryAxes::Y => &mut self.y,
+            GantryAxes::Z => &mut self.z,
         }
     }
 }
@@ -58,7 +58,7 @@ impl GantryModel {
                 x: 0.0,
                 y: 0.0,
                 z: 0.0,
-            }
+            },
         }
     }
 
@@ -79,7 +79,6 @@ impl GantryModel {
         // Update current position
         self.current_position = target_position;
 
-        // For now, we'll set the same speed for all axes, but this could be adjusted based on the axis and specific requirements
         StepperCtrlCmdGroup {
             x: StepperCtrlCmd {
                 steps: x_steps,
