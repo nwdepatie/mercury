@@ -4,11 +4,13 @@ pub mod gantry_model;
 use self::gantry_model::{
     GantryAxes, GantryModel, GantryPosition, StepperCtrlCmd, StepperCtrlCmdGroup,
 };
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub mod msg {
     rosrust::rosmsg_include!(hw_srv / movegantry, hw_srv / calibrategantry);
 }
+
+const MAX_SPEED: f64 = 10.0; /* meters/second */
 
 pub struct GantryController {
     model: GantryModel,
@@ -17,27 +19,39 @@ pub struct GantryController {
 impl GantryController {
     pub fn new() -> Self {
         GantryController {
-            model: GantryModel::new(),
+            model: GantryModel::new(MAX_SPEED),
         }
     }
 
-    pub fn move_callback(&self, data: rosrust_msg::hw_srv::movegantryReq) {}
+    pub fn move_callback(&mut self, data: rosrust_msg::hw_srv::movegantryReq) {
+        let stepper_cmds = self
+            .model
+            .calc_control_signals(GantryPosition::new(data.x, data.y, data.z));
+        //stepper_cmds[GantryAxes::X];
+        //stepper_cmds[GantryAxes::Y];
+        //stepper_cmds[GantryAxes::Z];
+    }
 
-    pub fn calibrate_callback(&self) {}
+    pub fn calibrate_callback(&mut self) {
+        let stepper_cmds = self
+            .model
+            .calc_control_signals(GantryPosition::new(0.0, 0.0, 0.0));
+    }
 }
 
 fn main() {
     /* Initialize ROS node */
     rosrust::init("gantry_sub");
 
-    let gantry_ctrl = Arc::new(GantryController::new());
+    let gantry_ctrl = Arc::new(Mutex::new(GantryController::new()));
 
     /* Create subscriber */
     let gantry_ctrl_clone = gantry_ctrl.clone();
-    let service_move = rosrust::service::<rosrust_msg::hw_srv::movegantry, _>(
+    let _service_move = rosrust::service::<rosrust_msg::hw_srv::movegantry, _>(
         "/gantry/pose/goal",
         move |coords: rosrust_msg::hw_srv::movegantryReq| {
-            gantry_ctrl_clone.move_callback(coords);
+            let mut gantry_ctrl = gantry_ctrl_clone.lock().unwrap();
+            gantry_ctrl.move_callback(coords);
 
             Ok(rosrust_msg::hw_srv::movegantryRes { status: true })
         },
@@ -46,10 +60,11 @@ fn main() {
 
     /* Create service */
     let gantry_ctrl_clone = gantry_ctrl.clone();
-    let service_calibrate = rosrust::service::<rosrust_msg::hw_srv::calibrategantry, _>(
+    let _service_calibrate = rosrust::service::<rosrust_msg::hw_srv::calibrategantry, _>(
         "/services/gantry/calibrate",
         move |_| {
-            gantry_ctrl_clone.calibrate_callback();
+            let mut gantry_ctrl = gantry_ctrl_clone.lock().unwrap();
+            gantry_ctrl.calibrate_callback();
 
             Ok(rosrust_msg::hw_srv::calibrategantryRes { status: true })
         },
