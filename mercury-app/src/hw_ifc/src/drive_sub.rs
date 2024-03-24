@@ -3,16 +3,15 @@
 use rosrust_msg::geometry_msgs::Twist;
 use std::sync::{Arc, Mutex};
 pub mod chassis_model;
+pub mod regmap;
 pub mod zynq;
 use self::chassis_model::{ChassisModel, MotorCtrlCmdGroup, WheelPositions};
+use self::regmap::{
+    DRV_DIR_GPIO_ADDR, DRV_TIMER_BACK_LEFT_ADDR, DRV_TIMER_BACK_RIGHT_ADDR,
+    DRV_TIMER_FRONT_LEFT_ADDR, DRV_TIMER_FRONT_RIGHT_ADDR,
+};
 use zynq::axigpio::{GPIOChannel, AXIGPIO, SIZEOF_AXIGPIO_REG};
 use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
-
-const TIMER_FRONT_RIGHT_ADDR: u32 = 0x4280_0000;
-const TIMER_FRONT_LEFT_ADDR: u32 = 0x4281_0000;
-const TIMER_BACK_RIGHT_ADDR: u32 = 0x4282_0000;
-const TIMER_BACK_LEFT_ADDR: u32 = 0x4283_0000;
-const DIRECTION_GPIO_ADDR: u32 = 0x4121_0000;
 
 const MAX_LINEAR_SPEED: f64 = 10.0; /* meters/second */
 const MAX_ANGULAR_SPEED: f64 = 10.0; /* radians/second */
@@ -123,19 +122,19 @@ fn main() {
     rosrust::init("drive_sub");
 
     let pwm_front_right = Arc::new(Mutex::new(
-        AXITimer::new(TIMER_FRONT_RIGHT_ADDR, SIZEOF_AXITIMER_REG).unwrap(),
+        AXITimer::new(DRV_TIMER_FRONT_RIGHT_ADDR, SIZEOF_AXITIMER_REG).unwrap(),
     ));
     let pwm_front_left = Arc::new(Mutex::new(
-        AXITimer::new(TIMER_FRONT_LEFT_ADDR, SIZEOF_AXITIMER_REG).unwrap(),
+        AXITimer::new(DRV_TIMER_FRONT_LEFT_ADDR, SIZEOF_AXITIMER_REG).unwrap(),
     ));
     let pwm_back_right = Arc::new(Mutex::new(
-        AXITimer::new(TIMER_BACK_RIGHT_ADDR, SIZEOF_AXITIMER_REG).unwrap(),
+        AXITimer::new(DRV_TIMER_BACK_RIGHT_ADDR, SIZEOF_AXITIMER_REG).unwrap(),
     ));
     let pwm_back_left = Arc::new(Mutex::new(
-        AXITimer::new(TIMER_BACK_LEFT_ADDR, SIZEOF_AXITIMER_REG).unwrap(),
+        AXITimer::new(DRV_TIMER_BACK_LEFT_ADDR, SIZEOF_AXITIMER_REG).unwrap(),
     ));
     let direction_control = Arc::new(Mutex::new(
-        AXIGPIO::new(DIRECTION_GPIO_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
+        AXIGPIO::new(DRV_DIR_GPIO_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
     ));
 
     let drive_ctrl = DriveController::new(

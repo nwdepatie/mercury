@@ -10,7 +10,6 @@ pub enum GantryAxes {
 
 pub struct StepperCtrlCmd {
     pub steps: i32,
-    speed: f64,
 }
 
 pub struct StepperCtrlCmdGroup {
@@ -77,18 +76,16 @@ impl GantryPosition {
 
 pub struct GantryModel {
     current_position: GantryPosition,
-    max_speed: f64,
 }
 
 impl GantryModel {
-    pub fn new(max_speed: f64) -> GantryModel {
+    pub fn new() -> GantryModel {
         GantryModel {
             current_position: GantryPosition {
                 x: 0.0,
                 y: 0.0,
                 z: 0.0,
             },
-            max_speed: max_speed,
         }
     }
 
@@ -109,18 +106,9 @@ impl GantryModel {
         self.current_position = target_position;
 
         StepperCtrlCmdGroup {
-            x: StepperCtrlCmd {
-                steps: x_steps,
-                speed: self.max_speed,
-            },
-            y: StepperCtrlCmd {
-                steps: y_steps,
-                speed: self.max_speed,
-            },
-            z: StepperCtrlCmd {
-                steps: z_steps,
-                speed: self.max_speed,
-            },
+            x: StepperCtrlCmd { steps: x_steps },
+            y: StepperCtrlCmd { steps: y_steps },
+            z: StepperCtrlCmd { steps: z_steps },
         }
     }
 }
