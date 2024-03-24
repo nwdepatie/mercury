@@ -32,17 +32,11 @@ localparam DIVIDE_BY = 2000; // 1000KHz / 2000 = 0.5KHz toggle rate, 1KHz pulse 
 
 // Internal signals
 reg [31:0] pulse_counter; // Counter for pulses generated
-reg generating; // Flag to indicate if pulse generation is active
+reg generating = 0; // Flag to indicate if pulse generation is active
 
 // Pulse generation control
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        // Reset condition
-        pulse_counter <= 32'd0;
-        pulse <= 1'b0;
-        generating <= 1'b0;
-        done <= 1'b0;
-    end else if (pulse_counter < pulse_count && generating) begin
+always @(posedge clk) begin
+    if (pulse_counter < pulse_count && generating) begin
         // Generate pulse
         pulse <= !pulse; // Toggle the pulse
         done <= 1'b0; // Not done yet
@@ -54,6 +48,7 @@ always @(posedge clk or negedge rst_n) begin
         pulse <= 1'b0; // Ensure pulse is low when not generating
         done <= 1'b1; // Signal that pulsing is complete
     end else if (pulse_count > 0 && !generating && pulse_counter == 0) begin
+        // Start generating pulse
         generating <= 1'b1;
         pulse_counter <= 32'd0; // Reset counter
         done <= 1'b0; // Ensure done is low at the start
@@ -61,6 +56,16 @@ always @(posedge clk or negedge rst_n) begin
 
     if (!generating) begin
         done <= 1'b0; // Ensure 'done' is low when we are not in generating state
+    end
+end
+
+always @(negedge rst_n) begin
+    if (!rst_n) begin
+        // Reset condition
+        pulse_counter <= 32'd0;
+        pulse <= 1'b0;
+        generating <= 1'b0;
+        done <= 1'b0;
     end
 end
 
