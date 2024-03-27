@@ -98,7 +98,9 @@ impl GantryController {
             .model
             .calc_control_signals(GantryPosition::new(data.x, data.y, data.z));
 
-        self.write_steppers(stepper_cmds);
+        rosrust::ros_info!("X:{}\tY:{}\tZ:{}", data.x, data.y, data.z);
+
+        //self.write_steppers(stepper_cmds);
     }
 
     pub fn calibrate_callback(&mut self) {
@@ -106,7 +108,9 @@ impl GantryController {
             .model
             .calc_control_signals(GantryPosition::new(0.0, 0.0, 0.0));
 
-        self.write_steppers(stepper_cmds);
+        rosrust::ros_info!("CALIBRATING...");
+
+        //self.write_steppers(stepper_cmds);
     }
 }
 
