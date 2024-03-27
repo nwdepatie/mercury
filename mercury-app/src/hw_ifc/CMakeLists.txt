@@ -151,7 +151,7 @@ include_directories(
 
 add_custom_target(hw_ifc
 	ALL
-	COMMAND cargo build -p mercury --release
+	COMMAND cargo build -p mercury --release #--target armv7-unknown-linux-gnueabihf
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../src/hw_ifc
 	#COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/cargo/release/my-project-binary ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/my-project-binary
 	COMMENT "Build Mercury..."
