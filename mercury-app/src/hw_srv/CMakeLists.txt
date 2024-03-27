@@ -59,6 +59,8 @@ add_service_files(
    worklight.srv
    grip.srv
    release.srv
+   movegantry.srv
+   calibrategantry.srv
  )
 
 ## Generate actions in the 'action' folder
