@@ -1,2 +1,3 @@
-bool brightness
+uint32 brightness
 ---
+bool status
