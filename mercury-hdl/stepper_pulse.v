@@ -24,15 +24,88 @@ module stepper_pulse(
     input wire clk, // System clock
     input wire rst_n, // Active low reset
     input wire [31:0] pulse_count, // Number of pulses to generate from AXI GPIO
-    output reg pulse, // Pulse output to stepper motor
-    output reg done // Signal to indicate when pulsing is complete
+    output pulse_out, // Pulse output to stepper motor
+    output done_out // Signal to indicate when pulsing is complete
 );
 
-localparam DIVIDE_BY = 2000; // 1000KHz / 2000 = 0.5KHz toggle rate, 1KHz pulse rate
+reg[31:0] pulse_count_internal = 0;
+reg[16:0] pulse_length_counter = 0;
+reg[16:0] pulse_length_counter_r = 0;
+reg in_progress = 0;
+reg done = 0;
+//reg temp_stop = 0;
+
+assign pulse_out = pulse_length_counter[16];
+assign done_out = done;
+
+// Pulse generation control
+always @(posedge clk) begin
+    // The Sean special
+    pulse_length_counter_r <= pulse_length_counter;
+    
+    // reset
+    if (pulse_count == 0) begin
+        done <= 0;
+    end
+    // New set of pulses to send
+    if (in_progress == 0 && pulse_count > 0 && done == 0) begin
+        pulse_count_internal <= pulse_count;
+        in_progress <= 1;
+        done <= 0;
+    // Continuously pulse
+    end else if (pulse_count_internal > 0 && in_progress == 1) begin
+        // Continuously pulse
+        pulse_length_counter <= pulse_length_counter + 1;
+        
+        // if pulse is delivered
+        if (pulse_length_counter[16] < pulse_length_counter_r[16]) begin
+            // decrease pulse count
+            pulse_count_internal <= pulse_count_internal - 1;
+            // if we reach 0 set done bit
+            //if (pulse_count_internal <= 0) begin
+            //    in_progress <= 0;
+             //   done <= 1;
+                //temp_stop <= 1;
+          //  end
+        end
+    end else if (pulse_count_internal <= 0 && in_progress == 1) begin
+        in_progress <= 0;
+        done <= 1;    
+    end
+    
+end
+endmodule
+/*
+always @(posedge pulse_length_counter[16]) begin
+    pulse_count_internal <= pulse_count_internal - 1;
+    if (pulse_count_internal == 0) begin
+        in_progress <= 0;
+        done <= 1;
+        temp_stop <= 1;
+    end
+end
+*/
+/*
+always @(posedge pulse_length_counter[16]) begin
+    if (pulse_count_internal > 0) begin
+        pulse_count_internal = pulse_count_internal - 1;
+    end
+endcase            
+*/
+    //if (!generating) begin
+    //    done <= 1'b0; // Ensure 'done' is low when we are not in generating state
+    //end
+    
+//assign pulse_out = pulse_count[4];
+
+//assign pulse_out = 1;
+/*
+localparam DIVIDE_BY = 200000000; // 100MHz / 200000 = 0.5KHz toggle rate, 1KHz pulse rate
 
 // Internal signals
 reg [31:0] pulse_counter; // Counter for pulses generated
 reg generating = 0; // Flag to indicate if pulse generation is active
+reg pulse = 0;
 
 // Pulse generation control
 always @(posedge clk) begin
@@ -54,11 +127,14 @@ always @(posedge clk) begin
         done <= 1'b0; // Ensure done is low at the start
     end
 
-    if (!generating) begin
-        done <= 1'b0; // Ensure 'done' is low when we are not in generating state
-    end
+    //if (!generating) begin
+    //    done <= 1'b0; // Ensure 'done' is low when we are not in generating state
+    //end
 end
 
+assign pulse_out = pulse;
+*/
+/*
 always @(negedge rst_n) begin
     if (!rst_n) begin
         // Reset condition
@@ -68,6 +144,7 @@ always @(negedge rst_n) begin
         done <= 1'b0;
     end
 end
+*/
 
-endmodule
+//endmodule
 
