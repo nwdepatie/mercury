@@ -10,6 +10,7 @@ project(hw_ifc)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  mercury_services
 )
 
 ## System dependencies are found with CMake's conventions
@@ -104,7 +105,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES hw_ifc
-#  CATKIN_DEPENDS roscpp rospy rosrust
+  CATKIN_DEPENDS roscpp rospy mercury_services
 #  DEPENDS system_lib
 )
 

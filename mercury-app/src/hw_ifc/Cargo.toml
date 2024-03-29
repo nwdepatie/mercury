@@ -18,3 +18,15 @@ path = "src/gantry_sub.rs"
 [[bin]]
 name = "drive_sub"
 path = "src/drive_sub.rs"
+
+[[bin]]
+name = "step_test"
+path = "src/step_test.rs"
+
+[[bin]]
+name = "pwm_test"
+path = "src/pwm_test.rs"
+
+[[bin]]
+name = "gpio_test"
+path = "src/gpio_test.rs"

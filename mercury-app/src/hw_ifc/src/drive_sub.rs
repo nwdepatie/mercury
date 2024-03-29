@@ -109,6 +109,8 @@ impl DriveController {
         let linear_speed = twist.linear.x;
         let angular_speed = twist.angular.z;
 
+        rosrust::ros_info!("Linear X:{}\tAngular Z:{}", linear_speed, angular_speed);
+
         /* Run Desired Speeds through Model of Chassis */
         let motor_cmds = self.model.calc_wheel_speeds(linear_speed, angular_speed);
 
