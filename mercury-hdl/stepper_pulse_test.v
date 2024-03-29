@@ -38,7 +38,7 @@ stepper_pulse uut (
     .clk(clk), 
     .rst_n(rst_n), 
     .pulse_count(pulse_count), 
-    .pulse(pulse), 
+    .pulse_out(pulse), 
     .done(done)
 );
 
