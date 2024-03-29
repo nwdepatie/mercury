@@ -55,5 +55,15 @@ impl AXIGPIO {
         };
 
         self.mapped_mem.write_u32(reg, val);
+        println!("Wrote {}...", self.mapped_mem.read_u32(reg));
+    }
+
+    pub fn read_gpio(&mut self, channel: GPIOChannel) -> u32 {
+        let reg = match channel {
+            GPIOChannel::GpioChannel1 => GPIO_DATA,
+            GPIOChannel::GpioChannel2 => GPIO2_DATA,
+        };
+
+        self.mapped_mem.read_u32(reg)
     }
 }

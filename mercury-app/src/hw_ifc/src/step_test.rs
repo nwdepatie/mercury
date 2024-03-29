@@ -5,18 +5,18 @@ use self::gantry_model::{
 };
 use std::sync::{Arc, Mutex};
 pub mod zynq;
+use crate::zynq::axigpio::GPIOChannel;
 use zynq::axigpio::{
     GPIOChannel::GpioChannel1, GPIOChannel::GpioChannel2, AXIGPIO, SIZEOF_AXIGPIO_REG,
 };
-use crate::zynq::axigpio::GPIOChannel;
 
 use std::thread;
 use std::time::Duration;
 
 pub mod regmap;
 use self::regmap::{
-    GANTRY_DIR1_ADDR, GANTRY_DIR2_ADDR, GANTRY_DIR3_ADDR, GANTRY_RESET_ADDR, GANTRY_STEP1_ADDR,
-    GANTRY_STEP2_ADDR, GANTRY_STEP3_ADDR,
+    GANTRY_DIR1_ADDR, GANTRY_DIR2_ADDR, GANTRY_DIR3_ADDR, GANTRY_DIR4_ADDR, GANTRY_RESET_ADDR, GANTRY_STEP1_ADDR,
+    GANTRY_STEP2_ADDR, GANTRY_STEP3_ADDR, GANTRY_STEP4_ADDR,
 };
 
 pub struct StepperController {
@@ -41,6 +41,10 @@ impl StepperController {
         self.step_control
             .write_gpio(num_steps, GPIOChannel::GpioChannel1);
     }
+
+    pub fn read_gpio(&mut self) -> u32 {
+        self.step_control.read_gpio(GPIOChannel::GpioChannel2)
+    }
 }
 
 fn main() {
@@ -59,17 +63,26 @@ fn main() {
         AXIGPIO::new(GANTRY_STEP3_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
     )));
 
-    let reset = Arc::new(Mutex::new(
-        AXIGPIO::new(GANTRY_DIR3_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
-    ));
+    let stepper4 = Arc::new(Mutex::new(StepperController::new(
+        AXIGPIO::new(GANTRY_DIR4_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
+        AXIGPIO::new(GANTRY_STEP4_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
+    )));
 
-    reset.lock().unwrap().write_gpio(1, GpioChannel1);
+    stepper4.lock().unwrap().set_direction(true);
 
-    stepper1.lock().unwrap().write_step_cmd(300);
+    stepper4.lock().unwrap().write_step_cmd(0);
 
-    stepper2.lock().unwrap().write_step_cmd(300);
+    stepper4.lock().unwrap().write_step_cmd(3000);
 
-    stepper3.lock().unwrap().write_step_cmd(300);
+    println!("Done: {}", stepper4.lock().unwrap().read_gpio());
 
-    thread::sleep(Duration::from_secs(2));
+    thread::sleep(Duration::from_millis(5000));
+
+    stepper4.lock().unwrap().set_direction(false);
+
+    stepper4.lock().unwrap().write_step_cmd(0);
+
+    stepper4.lock().unwrap().write_step_cmd(3000);
+
+    println!("Done: {}", stepper4.lock().unwrap().read_gpio());
 }
