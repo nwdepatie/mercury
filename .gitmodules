@@ -1,0 +1,3 @@
+[submodule "mercury-app/src/mercury_services"]
+	path = mercury-app/src/mercury_services
+	url = https://github.com/nwdepatie/mercury_services.git

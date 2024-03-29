@@ -9,7 +9,10 @@ pub mod zynq;
 use zynq::axigpio::{GPIOChannel, AXIGPIO, SIZEOF_AXIGPIO_REG};
 
 pub mod msg {
-    rosrust::rosmsg_include!(hw_srv / movegantry, hw_srv / calibrategantry);
+    rosrust::rosmsg_include!(
+        mercury_services / movegantry,
+        mercury_services / calibrategantry
+    );
 }
 
 pub mod regmap;
@@ -93,14 +96,14 @@ impl GantryController {
             .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::Z].steps) as u32);
     }
 
-    pub fn move_callback(&mut self, data: rosrust_msg::hw_srv::movegantryReq) {
+    pub fn move_callback(&mut self, data: rosrust_msg::mercury_services::movegantryReq) {
         let stepper_cmds = self
             .model
             .calc_control_signals(GantryPosition::new(data.x, data.y, data.z));
 
         rosrust::ros_info!("X:{}\tY:{}\tZ:{}", data.x, data.y, data.z);
 
-        //self.write_steppers(stepper_cmds);
+        self.write_steppers(stepper_cmds);
     }
 
     pub fn calibrate_callback(&mut self) {
@@ -110,7 +113,7 @@ impl GantryController {
 
         rosrust::ros_info!("CALIBRATING...");
 
-        //self.write_steppers(stepper_cmds);
+        self.write_steppers(stepper_cmds);
     }
 }
 
@@ -143,26 +146,26 @@ fn main() {
 
     /* Create subscriber */
     let gantry_ctrl_clone = gantry_ctrl.clone();
-    let _service_move = rosrust::service::<rosrust_msg::hw_srv::movegantry, _>(
+    let _service_move = rosrust::service::<rosrust_msg::mercury_services::movegantry, _>(
         "/services/gantry/setgoal",
-        move |coords: rosrust_msg::hw_srv::movegantryReq| {
+        move |coords: rosrust_msg::mercury_services::movegantryReq| {
             let mut gantry_ctrl = gantry_ctrl_clone.lock().unwrap();
             gantry_ctrl.move_callback(coords);
 
-            Ok(rosrust_msg::hw_srv::movegantryRes { status: true })
+            Ok(rosrust_msg::mercury_services::movegantryRes { status: true })
         },
     )
     .unwrap();
 
     /* Create service */
     let gantry_ctrl_clone = gantry_ctrl.clone();
-    let _service_calibrate = rosrust::service::<rosrust_msg::hw_srv::calibrategantry, _>(
+    let _service_calibrate = rosrust::service::<rosrust_msg::mercury_services::calibrategantry, _>(
         "/services/gantry/calibrate",
         move |_| {
             let mut gantry_ctrl = gantry_ctrl_clone.lock().unwrap();
             gantry_ctrl.calibrate_callback();
 
-            Ok(rosrust_msg::hw_srv::calibrategantryRes { status: true })
+            Ok(rosrust_msg::mercury_services::calibrategantryRes { status: true })
         },
     )
     .unwrap();
