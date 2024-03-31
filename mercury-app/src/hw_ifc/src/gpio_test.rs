@@ -2,17 +2,12 @@
 pub mod zynq;
 use std::env;
 use std::{thread, time};
-use zynq::axigpio::{
-    GPIOChannel::GpioChannel1, GPIOChannel::GpioChannel2, AXIGPIO, SIZEOF_AXIGPIO_REG,
-};
+use zynq::axigpio::{GPIOChannel::GpioChannel1, AXIGPIO, SIZEOF_AXIGPIO_REG};
 pub mod regmap;
-use self::regmap::{
-    DRV_DIR_GPIO_ADDR, DRV_TIMER_BACK_LEFT_ADDR, DRV_TIMER_BACK_RIGHT_ADDR,
-    DRV_TIMER_FRONT_LEFT_ADDR, DRV_TIMER_FRONT_RIGHT_ADDR, GANTRY_STEP2_ADDR,
-};
+use self::regmap::GANTRY_STEP2_ADDR;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let _args: Vec<String> = env::args().collect();
 
     /* Note that this is testing GPIO preconfigured to be an output */
     let mut gpio0 = AXIGPIO::new(GANTRY_STEP2_ADDR, SIZEOF_AXIGPIO_REG).unwrap();

@@ -1,21 +1,17 @@
 /* Subscriber for Carrying out Commands for Chassis Drive Motors */
 pub mod gantry_model;
-use self::gantry_model::{
-    GantryAxes, GantryModel, GantryPosition, StepperCtrlCmd, StepperCtrlCmdGroup,
-};
+
 use std::sync::{Arc, Mutex};
 pub mod zynq;
 use crate::zynq::axigpio::GPIOChannel;
-use zynq::axigpio::{
-    GPIOChannel::GpioChannel1, GPIOChannel::GpioChannel2, AXIGPIO, SIZEOF_AXIGPIO_REG,
-};
+use zynq::axigpio::{AXIGPIO, SIZEOF_AXIGPIO_REG};
 
 use std::thread;
 use std::time::Duration;
 
 pub mod regmap;
 use self::regmap::{
-    GANTRY_DIR1_ADDR, GANTRY_DIR2_ADDR, GANTRY_DIR3_ADDR, GANTRY_DIR4_ADDR, GANTRY_RESET_ADDR, GANTRY_STEP1_ADDR,
+    GANTRY_DIR1_ADDR, GANTRY_DIR2_ADDR, GANTRY_DIR3_ADDR, GANTRY_DIR4_ADDR, GANTRY_STEP1_ADDR,
     GANTRY_STEP2_ADDR, GANTRY_STEP3_ADDR, GANTRY_STEP4_ADDR,
 };
 
@@ -68,21 +64,21 @@ fn main() {
         AXIGPIO::new(GANTRY_STEP4_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
     )));
 
-    stepper4.lock().unwrap().set_direction(true);
+    stepper1.lock().unwrap().set_direction(true);
 
-    stepper4.lock().unwrap().write_step_cmd(0);
+    stepper1.lock().unwrap().write_step_cmd(0);
 
-    stepper4.lock().unwrap().write_step_cmd(3000);
+    stepper1.lock().unwrap().write_step_cmd(3000);
 
-    println!("Done: {}", stepper4.lock().unwrap().read_gpio());
+    println!("Done: {}", stepper1.lock().unwrap().read_gpio());
 
     thread::sleep(Duration::from_millis(5000));
 
-    stepper4.lock().unwrap().set_direction(false);
+    stepper1.lock().unwrap().set_direction(false);
 
-    stepper4.lock().unwrap().write_step_cmd(0);
+    stepper1.lock().unwrap().write_step_cmd(0);
 
-    stepper4.lock().unwrap().write_step_cmd(3000);
+    stepper1.lock().unwrap().write_step_cmd(3000);
 
-    println!("Done: {}", stepper4.lock().unwrap().read_gpio());
+    println!("Done: {}", stepper1.lock().unwrap().read_gpio());
 }

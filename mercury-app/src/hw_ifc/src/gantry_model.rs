@@ -6,6 +6,7 @@ pub enum GantryAxes {
     X,
     Y,
     Z,
+    Z_Prime,
 }
 
 pub struct StepperCtrlCmd {
@@ -16,6 +17,7 @@ pub struct StepperCtrlCmdGroup {
     x: StepperCtrlCmd,
     y: StepperCtrlCmd,
     z: StepperCtrlCmd,
+    z_prime: StepperCtrlCmd,
 }
 
 impl Index<GantryAxes> for StepperCtrlCmdGroup {
@@ -26,6 +28,7 @@ impl Index<GantryAxes> for StepperCtrlCmdGroup {
             GantryAxes::X => &self.x,
             GantryAxes::Y => &self.y,
             GantryAxes::Z => &self.z,
+            GantryAxes::Z_Prime => &self.z_prime,
         }
     }
 }
@@ -36,6 +39,7 @@ impl IndexMut<GantryAxes> for StepperCtrlCmdGroup {
             GantryAxes::X => &mut self.x,
             GantryAxes::Y => &mut self.y,
             GantryAxes::Z => &mut self.z,
+            GantryAxes::Z_Prime => &mut self.z_prime,
         }
     }
 }
@@ -44,6 +48,7 @@ pub struct GantryPosition {
     x: f64,
     y: f64,
     z: f64,
+    z_prime: f64,
 }
 
 impl Index<GantryAxes> for GantryPosition {
@@ -54,6 +59,7 @@ impl Index<GantryAxes> for GantryPosition {
             GantryAxes::X => &self.x,
             GantryAxes::Y => &self.y,
             GantryAxes::Z => &self.z,
+            GantryAxes::Z_Prime => &self.z_prime,
         }
     }
 }
@@ -64,13 +70,19 @@ impl IndexMut<GantryAxes> for GantryPosition {
             GantryAxes::X => &mut self.x,
             GantryAxes::Y => &mut self.y,
             GantryAxes::Z => &mut self.z,
+            GantryAxes::Z_Prime => &mut self.z_prime,
         }
     }
 }
 
 impl GantryPosition {
-    pub fn new(x: f64, y: f64, z: f64) -> GantryPosition {
-        GantryPosition { x: x, y: y, z: z }
+    pub fn new(x: f64, y: f64, z: f64, z_prime: f64) -> GantryPosition {
+        GantryPosition {
+            x: x,
+            y: y,
+            z: z,
+            z_prime: z_prime,
+        }
     }
 }
 
@@ -85,6 +97,7 @@ impl GantryModel {
                 x: 0.0,
                 y: 0.0,
                 z: 0.0,
+                z_prime: 0.0,
             },
         }
     }
@@ -101,6 +114,8 @@ impl GantryModel {
             (target_position[GantryAxes::Y] - self.current_position[GantryAxes::Y]) as i32;
         let z_steps =
             (target_position[GantryAxes::Z] - self.current_position[GantryAxes::Z]) as i32;
+        let z_prime_steps =
+            (target_position[GantryAxes::Z_Prime] - self.current_position[GantryAxes::Z]) as i32;
 
         // Update current position
         self.current_position = target_position;
@@ -109,6 +124,9 @@ impl GantryModel {
             x: StepperCtrlCmd { steps: x_steps },
             y: StepperCtrlCmd { steps: y_steps },
             z: StepperCtrlCmd { steps: z_steps },
+            z_prime: StepperCtrlCmd {
+                steps: z_prime_steps,
+            },
         }
     }
 }
