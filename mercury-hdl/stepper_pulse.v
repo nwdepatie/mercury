@@ -32,7 +32,7 @@ reg[31:0] pulse_count_internal = 0;
 reg[16:0] pulse_length_counter = 0;
 reg[16:0] pulse_length_counter_r = 0;
 reg in_progress = 0;
-reg done = 0;
+reg done = 1;
 //reg temp_stop = 0;
 
 assign pulse_out = pulse_length_counter[16];
@@ -51,7 +51,8 @@ always @(posedge clk) begin
     if (in_progress == 0 && pulse_count > 0 && done == 0) begin
         pulse_count_internal <= pulse_count;
         in_progress <= 1;
-        done <= 0;
+        if (pulse_count_internal != 0)
+            done <= 0;
     // Continuously pulse
     end else if (pulse_count_internal > 0 && in_progress == 1) begin
         // Continuously pulse
