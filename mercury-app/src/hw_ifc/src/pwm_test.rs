@@ -2,11 +2,11 @@
 pub mod zynq;
 use std::env;
 use std::{thread, time};
-use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
+use zynq::axitimer::AXITimer;
 pub mod regmap;
 use self::regmap::{
-    DRV_DIR_GPIO_ADDR, DRV_TIMER_BACK_LEFT_ADDR, DRV_TIMER_BACK_RIGHT_ADDR,
-    DRV_TIMER_FRONT_LEFT_ADDR, DRV_TIMER_FRONT_RIGHT_ADDR,
+    DRV_TIMER_BACK_LEFT_ADDR, DRV_TIMER_BACK_RIGHT_ADDR, DRV_TIMER_FRONT_LEFT_ADDR,
+    DRV_TIMER_FRONT_RIGHT_ADDR,
 };
 
 fn main() {

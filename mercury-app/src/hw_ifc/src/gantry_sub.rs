@@ -8,6 +8,9 @@ use self::gantry_model::{
 use std::sync::{Arc, Mutex};
 pub mod zynq;
 use rosrust_msg::geometry_msgs::Twist;
+use std::cmp::max;
+use std::thread;
+use std::time::Duration;
 use zynq::axigpio::{GPIOChannel, AXIGPIO, SIZEOF_AXIGPIO_REG};
 
 pub mod msg {
@@ -19,22 +22,26 @@ pub mod msg {
 
 pub mod regmap;
 use self::regmap::{
-    GANTRY_DIR1_ADDR, GANTRY_DIR2_ADDR, GANTRY_DIR3_ADDR, GANTRY_DIR4_ADDR, GANTRY_RESET_ADDR, GANTRY_STEP1_ADDR,
-    GANTRY_STEP2_ADDR, GANTRY_STEP3_ADDR, GANTRY_STEP4_ADDR,
+    GANTRY_DIR1_ADDR, GANTRY_DIR2_ADDR, GANTRY_DIR3_ADDR, GANTRY_DIR4_ADDR, GANTRY_RESET_ADDR,
+    GANTRY_STEP1_ADDR, GANTRY_STEP2_ADDR, GANTRY_STEP3_ADDR, GANTRY_STEP4_ADDR,
 };
+
+pub const STEPPER_SPEED: f64 = 770.0; /* Ticks/s */
 
 pub struct StepperController {
     direction_control: AXIGPIO,
     step_control: AXIGPIO,
-    pub is_running : bool
+    is_running: bool,
 }
 
 impl StepperController {
-    pub fn new(direction_control: AXIGPIO, step_control: AXIGPIO) -> StepperController {
+    pub fn new(direction_control: AXIGPIO, mut step_control: AXIGPIO) -> StepperController {
+        step_control.write_gpio(1, GPIOChannel::GpioChannel1);
+
         StepperController {
             direction_control: direction_control,
             step_control: step_control,
-            is_running : false
+            is_running: false,
         }
     }
 
@@ -44,12 +51,13 @@ impl StepperController {
     }
 
     pub fn write_step_cmd(&mut self, num_steps: u32) {
+        self.step_control.write_gpio(0, GPIOChannel::GpioChannel1);
         self.step_control
             .write_gpio(num_steps, GPIOChannel::GpioChannel1);
     }
 
-    pub fn read_done(&mut self) -> u32 {
-        self.step_control.read_gpio(GPIOChannel::GpioChannel2)
+    pub fn read_done(&mut self) -> bool {
+        self.step_control.read_gpio(GPIOChannel::GpioChannel2) != 0
     }
 }
 
@@ -81,71 +89,115 @@ impl GantryController {
     }
 
     fn write_steppers(&mut self, stepper_cmds: StepperCtrlCmdGroup) {
-        self.stepper1
-            .lock()
-            .unwrap()
-            .set_direction(stepper_cmds[GantryAxes::X].steps < 0);
-        self.stepper1
-            .lock()
-            .unwrap()
-            .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::X].steps) as u32);
-        self.stepper2
-            .lock()
-            .unwrap()
-            .set_direction(stepper_cmds[GantryAxes::Y].steps < 0);
-        self.stepper2
-            .lock()
-            .unwrap()
-            .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::Y].steps) as u32);
-        self.stepper3
-            .lock()
-            .unwrap()
-            .set_direction(stepper_cmds[GantryAxes::Z].steps < 0);
-        self.stepper3
-            .lock()
-            .unwrap()
-            .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::Z].steps) as u32);
+        if stepper_cmds[GantryAxes::X].steps != 0 {
+            self.stepper1
+                .lock()
+                .unwrap()
+                .set_direction(stepper_cmds[GantryAxes::X].steps < 0);
+            self.stepper1
+                .lock()
+                .unwrap()
+                .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::X].steps) as u32);
+            self.stepper4
+                .lock()
+                .unwrap()
+                .set_direction(stepper_cmds[GantryAxes::X].steps < 0);
+            self.stepper4
+                .lock()
+                .unwrap()
+                .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::X].steps) as u32);
+        }
+        if stepper_cmds[GantryAxes::Y].steps != 0 {
+            self.stepper2
+                .lock()
+                .unwrap()
+                .set_direction(stepper_cmds[GantryAxes::Y].steps < 0);
+            self.stepper2
+                .lock()
+                .unwrap()
+                .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::Y].steps) as u32);
+        }
+        if stepper_cmds[GantryAxes::Z].steps != 0 {
+            self.stepper3
+                .lock()
+                .unwrap()
+                .set_direction(stepper_cmds[GantryAxes::Z].steps < 0);
+            self.stepper3
+                .lock()
+                .unwrap()
+                .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::Z].steps) as u32);
+        }
+
+        // TODO: Z_Prime
+        //if stepper_cmds[GantryAxes::Z_Prime].steps != 0 {
+        //    self.stepper4
+        //        .lock()
+        //        .unwrap()
+        //        .set_direction(stepper_cmds[GantryAxes::Z_Prime].steps < 0);
+        //    self.stepper4
+        //        .lock()
+        //        .unwrap()
+        //        .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::Z_Prime].steps) as u32);
+        //}
     }
 
     pub fn move_callback(&mut self, data: rosrust_msg::mercury_services::movegantryReq) {
-        let stepper_cmds = self
-            .model
-            .calc_control_signals(GantryPosition::new(data.x, data.y, data.z));
+        let stepper_cmds = self.model.calc_control_signals(GantryPosition::new(
+            data.x,
+            data.y,
+            data.z,
+            data.z_prime,
+        ));
 
-        rosrust::ros_info!("X:{}\tY:{}\tZ:{}", data.x, data.y, data.z);
+        rosrust::ros_info!(
+            "X:{}\tY:{}\tZ:{}\tZ':{}",
+            data.x,
+            data.y,
+            data.z,
+            data.z_prime
+        );
+
+        let max_steps = max(
+            max(
+                i32::abs(stepper_cmds[GantryAxes::X].steps),
+                i32::abs(stepper_cmds[GantryAxes::Y].steps),
+            ),
+            max(
+                i32::abs(stepper_cmds[GantryAxes::Z].steps),
+                i32::abs(stepper_cmds[GantryAxes::Z_Prime].steps),
+            ),
+        ) as f64;
 
         self.write_steppers(stepper_cmds);
+
+        ros_info!("Waiting {} s", max_steps / STEPPER_SPEED);
+
+        thread::sleep(Duration::from_secs_f64(max_steps / STEPPER_SPEED));
     }
 
     pub fn calibrate_callback(&mut self) {
         let stepper_cmds = self
             .model
-            .calc_control_signals(GantryPosition::new(0.0, 0.0, 0.0));
+            .calc_control_signals(GantryPosition::new(0.0, 0.0, 0.0, 0.0));
 
         rosrust::ros_info!("CALIBRATING...");
 
         self.write_steppers(stepper_cmds);
     }
 
-    fn cont_write_stepper(stepper : Arc<Mutex<StepperController>>, val : f64) {
-        if (stepper.lock().unwrap().read_done() == 0) & stepper.lock().unwrap().is_running {
+    fn cont_write_stepper(stepper: Arc<Mutex<StepperController>>, val: f64) {
+        let mut stepper_guard = stepper.lock().unwrap();
+
+        if !stepper_guard.read_done() {
             return;
-        }
-        else if (stepper.lock().unwrap().read_done() == 0) & !stepper.lock().unwrap().is_running {
-            stepper.lock().unwrap().set_direction(val < 0.0);
-            stepper
-                .lock()
-                .unwrap()
-                .write_step_cmd(f64::abs(val * 10.0) as u32);
-            stepper.lock().unwrap().is_running = true;
+        } else if !stepper_guard.is_running {
+            ros_info!("Value written: {}", f64::abs(val * 100.0) as u32);
+            stepper_guard.set_direction(val < 0.0);
+            stepper_guard.write_step_cmd(f64::abs(val * 100.0) as u32);
+            stepper_guard.is_running = true;
             return;
-        }
-        else if stepper.lock().unwrap().read_done() != 0  {
-            stepper
-                .lock()
-                .unwrap()
-                .write_step_cmd(0);
-            stepper.lock().unwrap().is_running = false;
+        } else {
+            stepper_guard.is_running = false;
             return;
         }
     }
@@ -159,12 +211,10 @@ impl GantryController {
 
         ros_info!("X:{}, Y:{}, Z:{}, Z'{}", x, y, z, z_prime);
 
-        // Clone the Arc before using it. This increases the reference count
-        // but does not clone the underlying Mutex or StepperController.
-        Self::cont_write_stepper(Arc::clone(&self.stepper1), x);
-        Self::cont_write_stepper(Arc::clone(&self.stepper2), y);
-        Self::cont_write_stepper(Arc::clone(&self.stepper3), z);
-        Self::cont_write_stepper(Arc::clone(&self.stepper4), z_prime);
+        Self::cont_write_stepper(self.stepper1.clone(), x);
+        Self::cont_write_stepper(self.stepper1.clone(), y);
+        Self::cont_write_stepper(self.stepper1.clone(), z);
+        Self::cont_write_stepper(self.stepper1.clone(), z_prime);
     }
 }
 
