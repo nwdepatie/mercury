@@ -44,7 +44,7 @@ impl DriveController {
         let bot_width = BOT_WIDTH;
         let bot_length = BOT_LENGTH;
         let max_velocity_meters_per_second = MAX_LINEAR_SPEED;
-        let max_angular_velocity_rad_per_second = MAX_ANGULAR_SPEED;
+        let _max_angular_velocity_rad_per_second = MAX_ANGULAR_SPEED;
 
         DriveController {
             model: ChassisModel::new(

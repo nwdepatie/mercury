@@ -49,17 +49,17 @@ fn main() {
         AXIGPIO::new(GANTRY_STEP1_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
     )));
 
-    let stepper2 = Arc::new(Mutex::new(StepperController::new(
+    let _stepper2 = Arc::new(Mutex::new(StepperController::new(
         AXIGPIO::new(GANTRY_DIR2_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
         AXIGPIO::new(GANTRY_STEP2_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
     )));
 
-    let stepper3 = Arc::new(Mutex::new(StepperController::new(
+    let _stepper3 = Arc::new(Mutex::new(StepperController::new(
         AXIGPIO::new(GANTRY_DIR3_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
         AXIGPIO::new(GANTRY_STEP3_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
     )));
 
-    let stepper4 = Arc::new(Mutex::new(StepperController::new(
+    let _stepper4 = Arc::new(Mutex::new(StepperController::new(
         AXIGPIO::new(GANTRY_DIR4_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
         AXIGPIO::new(GANTRY_STEP4_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
     )));

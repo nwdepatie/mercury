@@ -6,7 +6,7 @@ pub enum GantryAxes {
     X,
     Y,
     Z,
-    Z_Prime,
+    ZPrime,
 }
 
 pub struct StepperCtrlCmd {
@@ -28,7 +28,7 @@ impl Index<GantryAxes> for StepperCtrlCmdGroup {
             GantryAxes::X => &self.x,
             GantryAxes::Y => &self.y,
             GantryAxes::Z => &self.z,
-            GantryAxes::Z_Prime => &self.z_prime,
+            GantryAxes::ZPrime => &self.z_prime,
         }
     }
 }
@@ -39,7 +39,7 @@ impl IndexMut<GantryAxes> for StepperCtrlCmdGroup {
             GantryAxes::X => &mut self.x,
             GantryAxes::Y => &mut self.y,
             GantryAxes::Z => &mut self.z,
-            GantryAxes::Z_Prime => &mut self.z_prime,
+            GantryAxes::ZPrime => &mut self.z_prime,
         }
     }
 }
@@ -59,7 +59,7 @@ impl Index<GantryAxes> for GantryPosition {
             GantryAxes::X => &self.x,
             GantryAxes::Y => &self.y,
             GantryAxes::Z => &self.z,
-            GantryAxes::Z_Prime => &self.z_prime,
+            GantryAxes::ZPrime => &self.z_prime,
         }
     }
 }
@@ -70,7 +70,7 @@ impl IndexMut<GantryAxes> for GantryPosition {
             GantryAxes::X => &mut self.x,
             GantryAxes::Y => &mut self.y,
             GantryAxes::Z => &mut self.z,
-            GantryAxes::Z_Prime => &mut self.z_prime,
+            GantryAxes::ZPrime => &mut self.z_prime,
         }
     }
 }
@@ -115,7 +115,7 @@ impl GantryModel {
         let z_steps =
             (target_position[GantryAxes::Z] - self.current_position[GantryAxes::Z]) as i32;
         let z_prime_steps =
-            (target_position[GantryAxes::Z_Prime] - self.current_position[GantryAxes::Z]) as i32;
+            (target_position[GantryAxes::ZPrime] - self.current_position[GantryAxes::Z]) as i32;
 
         // Update current position
         self.current_position = target_position;
