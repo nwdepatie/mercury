@@ -115,7 +115,7 @@ impl GantryModel {
         let z_steps =
             (target_position[GantryAxes::Z] - self.current_position[GantryAxes::Z]) as i32;
         let z_prime_steps =
-            (target_position[GantryAxes::ZPrime] - self.current_position[GantryAxes::Z]) as i32;
+            (target_position[GantryAxes::ZPrime] - self.current_position[GantryAxes::ZPrime]) as i32;
 
         // Update current position
         self.current_position = target_position;

@@ -13,11 +13,11 @@ use self::regmap::{
 use zynq::axigpio::{GPIOChannel, AXIGPIO, SIZEOF_AXIGPIO_REG};
 use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
 
-const MAX_LINEAR_SPEED: f64 = 10.0; /* meters/second */
-const MAX_ANGULAR_SPEED: f64 = 10.0; /* radians/second */
-const WHEEL_RADIUS: f64 = 10.0; /* meters */
-const BOT_WIDTH: f32 = 10.0; /* meters */
-const BOT_LENGTH: f32 = 10.0; /* meters */
+const MAX_LINEAR_SPEED: f64 = 100.0; /* meters/second */
+const MAX_ANGULAR_SPEED: f64 = 100.0; /* radians/second */
+const WHEEL_RADIUS: f64 = 0.095; /* meters */
+const BOT_WIDTH: f32 = 0.20; /* meters */
+const BOT_LENGTH: f32 = 0.20; /* meters */
 
 type PWMController = Arc<Mutex<AXITimer>>;
 type DirectionController = Arc<Mutex<AXIGPIO>>;
@@ -62,12 +62,8 @@ impl DriveController {
     }
 
     fn send_motor_commands(&self, motor_commands: MotorCtrlCmdGroup) {
-        let left_pwm_u32 = motor_commands[WheelPositions::LeftWheels]
-            .dutycycle
-            .clamp(0, u32::MAX);
-        let right_pwm_u32 = motor_commands[WheelPositions::RightWheels]
-            .dutycycle
-            .clamp(0, u32::MAX);
+        let left_pwm_u32 = motor_commands[WheelPositions::LeftWheels].dutycycle.clamp(0, u32::MAX);
+        let right_pwm_u32 = motor_commands[WheelPositions::RightWheels].dutycycle.clamp(0, u32::MAX);
 
         /* Set the directions */
         self.direction_ctrl.lock().unwrap().write_gpio(

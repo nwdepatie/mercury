@@ -91,50 +91,49 @@ impl GantryController {
 
     fn write_steppers(&mut self, stepper_cmds: StepperCtrlCmdGroup) {
         if stepper_cmds[GantryAxes::X].steps != 0 {
-            self.stepper1
+            self.stepper2
                 .lock()
                 .unwrap()
-                .set_direction(stepper_cmds[GantryAxes::X].steps < 0);
-            self.stepper1
+                .set_direction(stepper_cmds[GantryAxes::X].steps > 0);
+            self.stepper2
                 .lock()
                 .unwrap()
                 .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::X].steps) as u32);
-            self.stepper2
+            self.stepper3
                 .lock()
                 .unwrap()
-                .set_direction(stepper_cmds[GantryAxes::X].steps < 0);
-            self.stepper2
+                .set_direction(stepper_cmds[GantryAxes::X].steps > 0);
+            self.stepper3
                 .lock()
                 .unwrap()
                 .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::X].steps) as u32);
         }
         if stepper_cmds[GantryAxes::Y].steps != 0 {
-            self.stepper3
+            self.stepper4
                 .lock()
                 .unwrap()
-                .set_direction(stepper_cmds[GantryAxes::Y].steps < 0);
-            self.stepper3
+                .set_direction(stepper_cmds[GantryAxes::Y].steps > 0);
+            self.stepper4
                 .lock()
                 .unwrap()
                 .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::Y].steps) as u32);
         }
         if stepper_cmds[GantryAxes::Z].steps != 0 {
-            self.stepper4
+            self.stepper5
                 .lock()
                 .unwrap()
-                .set_direction(stepper_cmds[GantryAxes::Z].steps < 0);
-            self.stepper4
+                .set_direction(stepper_cmds[GantryAxes::Z].steps > 0);
+            self.stepper5
                 .lock()
                 .unwrap()
                 .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::Z].steps) as u32);
         }
-
         if stepper_cmds[GantryAxes::ZPrime].steps != 0 {
-            self.stepper5
+            self.stepper1
                 .lock()
                 .unwrap()
-                .set_direction(stepper_cmds[GantryAxes::ZPrime].steps < 0);
-            self.stepper5
+                .set_direction(stepper_cmds[GantryAxes::ZPrime].steps > 0);
+            self.stepper1
                 .lock()
                 .unwrap()
                 .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::ZPrime].steps) as u32);
