@@ -29,13 +29,13 @@ module stepper_pulse(
 );
 
 reg[31:0] pulse_count_internal = 0;
-reg[16:0] pulse_length_counter = 0;
-reg[16:0] pulse_length_counter_r = 0;
+reg[17:0] pulse_length_counter = 0;
+reg[17:0] pulse_length_counter_r = 0;
 reg in_progress = 0;
 reg done = 1;
 //reg temp_stop = 0;
 
-assign pulse_out = pulse_length_counter[16];
+assign pulse_out = pulse_length_counter[17];
 assign done_out = done;
 
 // Pulse generation control
@@ -59,7 +59,7 @@ always @(posedge clk) begin
         pulse_length_counter <= pulse_length_counter + 1;
         
         // if pulse is delivered
-        if (pulse_length_counter[16] < pulse_length_counter_r[16]) begin
+        if (pulse_length_counter[17] < pulse_length_counter_r[17]) begin
             // decrease pulse count
             pulse_count_internal <= pulse_count_internal - 1;
             // if we reach 0 set done bit

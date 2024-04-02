@@ -40,7 +40,7 @@ if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
 
 # The design that will be created by this Tcl script contains the following 
 # module references:
-# stepper_pulse, stepper_pulse, stepper_pulse, stepper_pulse, stepper_pulse
+# motor_enc, motor_enc, motor_enc, motor_enc, stepper_pulse, stepper_pulse, stepper_pulse, stepper_pulse, stepper_pulse
 
 # Please add the sources of those modules before sourcing this Tcl script.
 
@@ -164,6 +164,10 @@ xilinx.com:ip:util_vector_logic:2.0\
 set bCheckModules 1
 if { $bCheckModules == 1 } {
    set list_check_mods "\ 
+motor_enc\
+motor_enc\
+motor_enc\
+motor_enc\
 stepper_pulse\
 stepper_pulse\
 stepper_pulse\
@@ -234,12 +238,6 @@ proc create_hier_cell_lighting { parentCell nameHier } {
   # Create interface pins
   create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI
 
-  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI1
-
-  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI2
-
-  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI3
-
 
   # Create pins
   create_bd_pin -dir I -type clk s_axi_aclk
@@ -263,19 +261,29 @@ proc create_hier_cell_lighting { parentCell nameHier } {
   set_property CONFIG.enable_timer2 {1} $axi_timer_workcell
 
 
+  # Create instance: axi_interconnect_0, and set properties
+  set axi_interconnect_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_interconnect_0 ]
+  set_property -dict [list \
+    CONFIG.NUM_MI {4} \
+    CONFIG.S00_HAS_DATA_FIFO {2} \
+    CONFIG.STRATEGY {2} \
+  ] $axi_interconnect_0
+
+
   # Create interface connections
-  connect_bd_intf_net -intf_net axi_interconnect_0_M12_AXI [get_bd_intf_pins S_AXI3] [get_bd_intf_pins axi_timer_workcell/S_AXI]
-  connect_bd_intf_net -intf_net axi_interconnect_0_M13_AXI [get_bd_intf_pins S_AXI2] [get_bd_intf_pins axi_timer_headlight_upper/S_AXI]
-  connect_bd_intf_net -intf_net axi_interconnect_0_M14_AXI [get_bd_intf_pins S_AXI] [get_bd_intf_pins axi_timer_headlight_lower/S_AXI]
-  connect_bd_intf_net -intf_net axi_interconnect_0_M15_AXI [get_bd_intf_pins S_AXI1] [get_bd_intf_pins axi_timer_brakelight/S_AXI]
+  connect_bd_intf_net -intf_net S_AXI_1 [get_bd_intf_pins S_AXI] [get_bd_intf_pins axi_interconnect_0/S00_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M00_AXI [get_bd_intf_pins axi_timer_brakelight/S_AXI] [get_bd_intf_pins axi_interconnect_0/M00_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M01_AXI [get_bd_intf_pins axi_timer_headlight_lower/S_AXI] [get_bd_intf_pins axi_interconnect_0/M01_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M02_AXI [get_bd_intf_pins axi_timer_headlight_upper/S_AXI] [get_bd_intf_pins axi_interconnect_0/M02_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M03_AXI [get_bd_intf_pins axi_timer_workcell/S_AXI] [get_bd_intf_pins axi_interconnect_0/M03_AXI]
 
   # Create port connections
   connect_bd_net -net axi_timer_brakelight_pwm0 [get_bd_pins axi_timer_brakelight/pwm0] [get_bd_pins Flood_Light_2]
   connect_bd_net -net axi_timer_headlight_lower_pwm0 [get_bd_pins axi_timer_headlight_lower/pwm0] [get_bd_pins Flood_Light_1]
   connect_bd_net -net axi_timer_headlight_upper_pwm0 [get_bd_pins axi_timer_headlight_upper/pwm0] [get_bd_pins Flood_Light_3]
   connect_bd_net -net axi_timer_workcell_pwm0 [get_bd_pins axi_timer_workcell/pwm0] [get_bd_pins Flood_Light_4]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins s_axi_aclk] [get_bd_pins axi_timer_workcell/s_axi_aclk] [get_bd_pins axi_timer_headlight_upper/s_axi_aclk] [get_bd_pins axi_timer_brakelight/s_axi_aclk] [get_bd_pins axi_timer_headlight_lower/s_axi_aclk]
-  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins s_axi_aresetn] [get_bd_pins axi_timer_workcell/s_axi_aresetn] [get_bd_pins axi_timer_headlight_upper/s_axi_aresetn] [get_bd_pins axi_timer_brakelight/s_axi_aresetn] [get_bd_pins axi_timer_headlight_lower/s_axi_aresetn]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins s_axi_aclk] [get_bd_pins axi_timer_workcell/s_axi_aclk] [get_bd_pins axi_timer_headlight_upper/s_axi_aclk] [get_bd_pins axi_timer_brakelight/s_axi_aclk] [get_bd_pins axi_timer_headlight_lower/s_axi_aclk] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins axi_interconnect_0/M03_ACLK] [get_bd_pins axi_interconnect_0/M02_ACLK] [get_bd_pins axi_interconnect_0/M01_ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK]
+  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins s_axi_aresetn] [get_bd_pins axi_timer_workcell/s_axi_aresetn] [get_bd_pins axi_timer_headlight_upper/s_axi_aresetn] [get_bd_pins axi_timer_brakelight/s_axi_aresetn] [get_bd_pins axi_timer_headlight_lower/s_axi_aresetn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_interconnect_0/M03_ARESETN] [get_bd_pins axi_interconnect_0/M02_ARESETN] [get_bd_pins axi_interconnect_0/M01_ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN]
 
   # Restore current instance
   current_bd_instance $oldCurInst
@@ -497,6 +505,42 @@ proc create_hier_cell_gantry { parentCell nameHier } {
   ] $util_vector_logic_3
 
 
+  # Create instance: axi_interconnect_0, and set properties
+  set axi_interconnect_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_interconnect_0 ]
+  set_property -dict [list \
+    CONFIG.NUM_MI {11} \
+    CONFIG.S00_HAS_DATA_FIFO {2} \
+    CONFIG.STRATEGY {2} \
+  ] $axi_interconnect_0
+
+
+  # Create instance: axi_gpio_dir5, and set properties
+  set axi_gpio_dir5 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 axi_gpio_dir5 ]
+  set_property -dict [list \
+    CONFIG.C_ALL_OUTPUTS {1} \
+    CONFIG.C_GPIO_WIDTH {1} \
+    CONFIG.C_IS_DUAL {0} \
+  ] $axi_gpio_dir5
+
+
+  # Create instance: util_vector_logic_4, and set properties
+  set util_vector_logic_4 [ create_bd_cell -type ip -vlnv xilinx.com:ip:util_vector_logic:2.0 util_vector_logic_4 ]
+  set_property -dict [list \
+    CONFIG.C_OPERATION {not} \
+    CONFIG.C_SIZE {1} \
+  ] $util_vector_logic_4
+
+
+  # Create instance: axi_gpio_step5, and set properties
+  set axi_gpio_step5 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 axi_gpio_step5 ]
+  set_property -dict [list \
+    CONFIG.C_ALL_INPUTS_2 {1} \
+    CONFIG.C_ALL_OUTPUTS {1} \
+    CONFIG.C_GPIO2_WIDTH {1} \
+    CONFIG.C_IS_DUAL {1} \
+  ] $axi_gpio_step5
+
+
   # Create instance: stepper_pulse_0, and set properties
   set block_name stepper_pulse
   set block_cell_name stepper_pulse_0
@@ -530,35 +574,6 @@ proc create_hier_cell_gantry { parentCell nameHier } {
      return 1
    }
   
-  # Create instance: stepper_pulse_3, and set properties
-  set block_name stepper_pulse
-  set block_cell_name stepper_pulse_3
-  if { [catch {set stepper_pulse_3 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
-     catch {common::send_gid_msg -ssname BD::TCL -id 2095 -severity "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
-     return 1
-   } elseif { $stepper_pulse_3 eq "" } {
-     catch {common::send_gid_msg -ssname BD::TCL -id 2096 -severity "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
-     return 1
-   }
-  
-  # Create instance: axi_interconnect_0, and set properties
-  set axi_interconnect_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_interconnect_0 ]
-  set_property -dict [list \
-    CONFIG.NUM_MI {11} \
-    CONFIG.S00_HAS_DATA_FIFO {2} \
-    CONFIG.STRATEGY {2} \
-  ] $axi_interconnect_0
-
-
-  # Create instance: axi_gpio_dir5, and set properties
-  set axi_gpio_dir5 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 axi_gpio_dir5 ]
-  set_property -dict [list \
-    CONFIG.C_ALL_OUTPUTS {1} \
-    CONFIG.C_GPIO_WIDTH {1} \
-    CONFIG.C_IS_DUAL {0} \
-  ] $axi_gpio_dir5
-
-
   # Create instance: stepper_pulse_4, and set properties
   set block_name stepper_pulse
   set block_cell_name stepper_pulse_4
@@ -570,24 +585,17 @@ proc create_hier_cell_gantry { parentCell nameHier } {
      return 1
    }
   
-  # Create instance: util_vector_logic_4, and set properties
-  set util_vector_logic_4 [ create_bd_cell -type ip -vlnv xilinx.com:ip:util_vector_logic:2.0 util_vector_logic_4 ]
-  set_property -dict [list \
-    CONFIG.C_OPERATION {not} \
-    CONFIG.C_SIZE {1} \
-  ] $util_vector_logic_4
-
-
-  # Create instance: axi_gpio_step5, and set properties
-  set axi_gpio_step5 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 axi_gpio_step5 ]
-  set_property -dict [list \
-    CONFIG.C_ALL_INPUTS_2 {1} \
-    CONFIG.C_ALL_OUTPUTS {1} \
-    CONFIG.C_GPIO2_WIDTH {1} \
-    CONFIG.C_IS_DUAL {1} \
-  ] $axi_gpio_step5
-
-
+  # Create instance: stepper_pulse_3, and set properties
+  set block_name stepper_pulse
+  set block_cell_name stepper_pulse_3
+  if { [catch {set stepper_pulse_3 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2095 -severity "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   } elseif { $stepper_pulse_3 eq "" } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2096 -severity "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   }
+  
   # Create interface connections
   connect_bd_intf_net -intf_net Conn1 [get_bd_intf_pins axi_interconnect_0/S00_AXI] [get_bd_intf_pins S00_AXI]
   connect_bd_intf_net -intf_net axi_interconnect_0_M00_AXI [get_bd_intf_pins axi_gpio_dir1/S_AXI] [get_bd_intf_pins axi_interconnect_0/M00_AXI]
@@ -619,7 +627,7 @@ proc create_hier_cell_gantry { parentCell nameHier } {
   connect_bd_net -net axi_gpio_step4_gpio_io_o [get_bd_pins axi_gpio_step4/gpio_io_o] [get_bd_pins stepper_pulse_3/pulse_count]
   connect_bd_net -net axi_gpio_step5_gpio_io_o [get_bd_pins axi_gpio_step5/gpio_io_o] [get_bd_pins stepper_pulse_4/pulse_count]
   connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins s_axi_aresetn] [get_bd_pins axi_gpio_step2/s_axi_aresetn] [get_bd_pins axi_gpio_step3/s_axi_aresetn] [get_bd_pins axi_gpio_rst/s_axi_aresetn] [get_bd_pins axi_gpio_step1/s_axi_aresetn] [get_bd_pins axi_gpio_dir1/s_axi_aresetn] [get_bd_pins axi_gpio_dir2/s_axi_aresetn] [get_bd_pins axi_gpio_dir3/s_axi_aresetn] [get_bd_pins axi_gpio_step4/s_axi_aresetn] [get_bd_pins axi_gpio_dir4/s_axi_aresetn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/M01_ARESETN] [get_bd_pins axi_interconnect_0/M02_ARESETN] [get_bd_pins axi_interconnect_0/M03_ARESETN] [get_bd_pins axi_interconnect_0/M04_ARESETN] [get_bd_pins axi_interconnect_0/M05_ARESETN] [get_bd_pins axi_interconnect_0/M06_ARESETN] [get_bd_pins axi_interconnect_0/M07_ARESETN] [get_bd_pins axi_interconnect_0/M08_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_gpio_dir5/s_axi_aresetn] [get_bd_pins axi_gpio_step5/s_axi_aresetn] [get_bd_pins axi_interconnect_0/M09_ARESETN] [get_bd_pins axi_interconnect_0/M10_ARESETN]
-  connect_bd_net -net s_axi_aclk_1 [get_bd_pins s_axi_aclk] [get_bd_pins axi_gpio_rst/s_axi_aclk] [get_bd_pins axi_gpio_step3/s_axi_aclk] [get_bd_pins axi_gpio_step2/s_axi_aclk] [get_bd_pins axi_gpio_step1/s_axi_aclk] [get_bd_pins axi_gpio_dir1/s_axi_aclk] [get_bd_pins axi_gpio_dir2/s_axi_aclk] [get_bd_pins axi_gpio_dir3/s_axi_aclk] [get_bd_pins axi_gpio_step4/s_axi_aclk] [get_bd_pins axi_gpio_dir4/s_axi_aclk] [get_bd_pins stepper_pulse_0/clk] [get_bd_pins stepper_pulse_1/clk] [get_bd_pins stepper_pulse_2/clk] [get_bd_pins stepper_pulse_3/clk] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/M01_ACLK] [get_bd_pins axi_interconnect_0/M02_ACLK] [get_bd_pins axi_interconnect_0/M03_ACLK] [get_bd_pins axi_interconnect_0/M04_ACLK] [get_bd_pins axi_interconnect_0/M05_ACLK] [get_bd_pins axi_interconnect_0/M06_ACLK] [get_bd_pins axi_interconnect_0/M07_ACLK] [get_bd_pins axi_interconnect_0/M08_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins stepper_pulse_4/clk] [get_bd_pins axi_gpio_dir5/s_axi_aclk] [get_bd_pins axi_gpio_step5/s_axi_aclk] [get_bd_pins axi_interconnect_0/M09_ACLK] [get_bd_pins axi_interconnect_0/M10_ACLK]
+  connect_bd_net -net s_axi_aclk_1 [get_bd_pins s_axi_aclk] [get_bd_pins axi_gpio_rst/s_axi_aclk] [get_bd_pins axi_gpio_step3/s_axi_aclk] [get_bd_pins axi_gpio_step2/s_axi_aclk] [get_bd_pins axi_gpio_step1/s_axi_aclk] [get_bd_pins axi_gpio_dir1/s_axi_aclk] [get_bd_pins axi_gpio_dir2/s_axi_aclk] [get_bd_pins axi_gpio_dir3/s_axi_aclk] [get_bd_pins axi_gpio_step4/s_axi_aclk] [get_bd_pins axi_gpio_dir4/s_axi_aclk] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/M01_ACLK] [get_bd_pins axi_interconnect_0/M02_ACLK] [get_bd_pins axi_interconnect_0/M03_ACLK] [get_bd_pins axi_interconnect_0/M04_ACLK] [get_bd_pins axi_interconnect_0/M05_ACLK] [get_bd_pins axi_interconnect_0/M06_ACLK] [get_bd_pins axi_interconnect_0/M07_ACLK] [get_bd_pins axi_interconnect_0/M08_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins axi_gpio_dir5/s_axi_aclk] [get_bd_pins axi_gpio_step5/s_axi_aclk] [get_bd_pins axi_interconnect_0/M09_ACLK] [get_bd_pins axi_interconnect_0/M10_ACLK] [get_bd_pins stepper_pulse_0/clk] [get_bd_pins stepper_pulse_1/clk] [get_bd_pins stepper_pulse_2/clk] [get_bd_pins stepper_pulse_4/clk] [get_bd_pins stepper_pulse_3/clk]
   connect_bd_net -net stepper_pulse_0_done_out [get_bd_pins stepper_pulse_0/done_out] [get_bd_pins axi_gpio_step1/gpio2_io_i] [get_bd_pins util_vector_logic_0/Op1]
   connect_bd_net -net stepper_pulse_0_pulse [get_bd_pins stepper_pulse_1/pulse_out] [get_bd_pins STEP_2]
   connect_bd_net -net stepper_pulse_0_pulse_out [get_bd_pins stepper_pulse_0/pulse_out] [get_bd_pins STEP_1]
@@ -680,14 +688,6 @@ proc create_hier_cell_drive { parentCell nameHier } {
   # Create interface pins
   create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI
 
-  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI1
-
-  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI2
-
-  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI3
-
-  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI4
-
 
   # Create pins
   create_bd_pin -dir I -type clk s_axi_aclk
@@ -698,6 +698,10 @@ proc create_hier_cell_drive { parentCell nameHier } {
   create_bd_pin -dir O DAC_2_INB
   create_bd_pin -dir O -from 0 -to 0 Drive_DIR_1
   create_bd_pin -dir O -from 0 -to 0 Drive_DIR_3
+  create_bd_pin -dir I Speed_SNS_1
+  create_bd_pin -dir I Speed_SNS_2
+  create_bd_pin -dir I Speed_SNS_3
+  create_bd_pin -dir I Speed_SNS_4
 
   # Create instance: axi_timer_drv2, and set properties
   set axi_timer_drv2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_timer:2.0 axi_timer_drv2 ]
@@ -729,22 +733,104 @@ proc create_hier_cell_drive { parentCell nameHier } {
   # Create instance: axi_timer_drv1, and set properties
   set axi_timer_drv1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_timer:2.0 axi_timer_drv1 ]
 
+  # Create instance: axi_interconnect_0, and set properties
+  set axi_interconnect_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_interconnect_0 ]
+  set_property -dict [list \
+    CONFIG.NUM_MI {7} \
+    CONFIG.S00_HAS_DATA_FIFO {2} \
+    CONFIG.STRATEGY {2} \
+  ] $axi_interconnect_0
+
+
+  # Create instance: axi_gpio_0, and set properties
+  set axi_gpio_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 axi_gpio_0 ]
+  set_property -dict [list \
+    CONFIG.C_ALL_INPUTS {1} \
+    CONFIG.C_ALL_INPUTS_2 {1} \
+    CONFIG.C_IS_DUAL {1} \
+  ] $axi_gpio_0
+
+
+  # Create instance: axi_gpio_1, and set properties
+  set axi_gpio_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 axi_gpio_1 ]
+  set_property -dict [list \
+    CONFIG.C_ALL_INPUTS {1} \
+    CONFIG.C_ALL_INPUTS_2 {1} \
+    CONFIG.C_IS_DUAL {1} \
+  ] $axi_gpio_1
+
+
+  # Create instance: motor_enc_1, and set properties
+  set block_name motor_enc
+  set block_cell_name motor_enc_1
+  if { [catch {set motor_enc_1 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2095 -severity "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   } elseif { $motor_enc_1 eq "" } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2096 -severity "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   }
+  
+  # Create instance: motor_enc_2, and set properties
+  set block_name motor_enc
+  set block_cell_name motor_enc_2
+  if { [catch {set motor_enc_2 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2095 -severity "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   } elseif { $motor_enc_2 eq "" } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2096 -severity "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   }
+  
+  # Create instance: motor_enc_3, and set properties
+  set block_name motor_enc
+  set block_cell_name motor_enc_3
+  if { [catch {set motor_enc_3 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2095 -severity "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   } elseif { $motor_enc_3 eq "" } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2096 -severity "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   }
+  
+  # Create instance: motor_enc_0, and set properties
+  set block_name motor_enc
+  set block_cell_name motor_enc_0
+  if { [catch {set motor_enc_0 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2095 -severity "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   } elseif { $motor_enc_0 eq "" } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2096 -severity "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   }
+  
   # Create interface connections
-  connect_bd_intf_net -intf_net Conn2 [get_bd_intf_pins axi_timer_drv3/S_AXI] [get_bd_intf_pins S_AXI1]
-  connect_bd_intf_net -intf_net Conn3 [get_bd_intf_pins axi_timer_drv4/S_AXI] [get_bd_intf_pins S_AXI2]
-  connect_bd_intf_net -intf_net Conn4 [get_bd_intf_pins axi_gpio_dir/S_AXI] [get_bd_intf_pins S_AXI3]
-  connect_bd_intf_net -intf_net Conn5 [get_bd_intf_pins axi_timer_drv2/S_AXI] [get_bd_intf_pins S_AXI4]
-  connect_bd_intf_net -intf_net S_AXI_1 [get_bd_intf_pins S_AXI] [get_bd_intf_pins axi_timer_drv1/S_AXI]
+  connect_bd_intf_net -intf_net S_AXI_1 [get_bd_intf_pins S_AXI] [get_bd_intf_pins axi_interconnect_0/S00_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M00_AXI [get_bd_intf_pins axi_interconnect_0/M00_AXI] [get_bd_intf_pins axi_timer_drv1/S_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M01_AXI [get_bd_intf_pins axi_interconnect_0/M01_AXI] [get_bd_intf_pins axi_timer_drv2/S_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M02_AXI [get_bd_intf_pins axi_interconnect_0/M02_AXI] [get_bd_intf_pins axi_timer_drv3/S_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M03_AXI [get_bd_intf_pins axi_interconnect_0/M03_AXI] [get_bd_intf_pins axi_timer_drv4/S_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M04_AXI [get_bd_intf_pins axi_interconnect_0/M04_AXI] [get_bd_intf_pins axi_gpio_dir/S_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M05_AXI [get_bd_intf_pins axi_gpio_0/S_AXI] [get_bd_intf_pins axi_interconnect_0/M05_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M06_AXI [get_bd_intf_pins axi_gpio_1/S_AXI] [get_bd_intf_pins axi_interconnect_0/M06_AXI]
 
   # Create port connections
+  connect_bd_net -net Speed_SNS_1_1 [get_bd_pins Speed_SNS_1] [get_bd_pins motor_enc_0/motor_pulse]
+  connect_bd_net -net Speed_SNS_2_1 [get_bd_pins Speed_SNS_2] [get_bd_pins motor_enc_1/motor_pulse]
+  connect_bd_net -net Speed_SNS_3_1 [get_bd_pins Speed_SNS_3] [get_bd_pins motor_enc_2/motor_pulse]
+  connect_bd_net -net Speed_SNS_4_1 [get_bd_pins Speed_SNS_4] [get_bd_pins motor_enc_3/motor_pulse]
   connect_bd_net -net axi_gpio_2_gpio2_io_o [get_bd_pins axi_gpio_dir/gpio2_io_o] [get_bd_pins xlslice_1/Din]
   connect_bd_net -net axi_gpio_2_gpio_io_o [get_bd_pins axi_gpio_dir/gpio_io_o] [get_bd_pins xlslice_0/Din]
   connect_bd_net -net axi_timer_2_pwm0 [get_bd_pins axi_timer_drv3/pwm0] [get_bd_pins DAC_2_INA]
   connect_bd_net -net axi_timer_3_pwm0 [get_bd_pins axi_timer_drv4/pwm0] [get_bd_pins DAC_2_INB]
   connect_bd_net -net axi_timer_drv1_pwm0 [get_bd_pins axi_timer_drv1/pwm0] [get_bd_pins DAC_1_INA]
   connect_bd_net -net axi_timer_drv2_pwm0 [get_bd_pins axi_timer_drv2/pwm0] [get_bd_pins DAC_1_INB]
-  connect_bd_net -net s_axi_aclk_1 [get_bd_pins s_axi_aclk] [get_bd_pins axi_timer_drv3/s_axi_aclk] [get_bd_pins axi_timer_drv4/s_axi_aclk] [get_bd_pins axi_gpio_dir/s_axi_aclk] [get_bd_pins axi_timer_drv2/s_axi_aclk] [get_bd_pins axi_timer_drv1/s_axi_aclk]
-  connect_bd_net -net s_axi_aresetn_1 [get_bd_pins s_axi_aresetn] [get_bd_pins axi_timer_drv4/s_axi_aresetn] [get_bd_pins axi_timer_drv3/s_axi_aresetn] [get_bd_pins axi_gpio_dir/s_axi_aresetn] [get_bd_pins axi_timer_drv2/s_axi_aresetn] [get_bd_pins axi_timer_drv1/s_axi_aresetn]
+  connect_bd_net -net motor_enc_0_pulse_count [get_bd_pins motor_enc_0/pulse_count] [get_bd_pins axi_gpio_0/gpio_io_i]
+  connect_bd_net -net motor_enc_1_pulse_count [get_bd_pins motor_enc_1/pulse_count] [get_bd_pins axi_gpio_0/gpio2_io_i]
+  connect_bd_net -net motor_enc_2_pulse_count [get_bd_pins motor_enc_2/pulse_count] [get_bd_pins axi_gpio_1/gpio_io_i]
+  connect_bd_net -net motor_enc_3_pulse_count [get_bd_pins motor_enc_3/pulse_count] [get_bd_pins axi_gpio_1/gpio2_io_i]
+  connect_bd_net -net s_axi_aclk_1 [get_bd_pins s_axi_aclk] [get_bd_pins axi_timer_drv3/s_axi_aclk] [get_bd_pins axi_timer_drv4/s_axi_aclk] [get_bd_pins axi_gpio_dir/s_axi_aclk] [get_bd_pins axi_timer_drv2/s_axi_aclk] [get_bd_pins axi_timer_drv1/s_axi_aclk] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/M01_ACLK] [get_bd_pins axi_interconnect_0/M02_ACLK] [get_bd_pins axi_interconnect_0/M03_ACLK] [get_bd_pins axi_interconnect_0/M04_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins motor_enc_1/clk] [get_bd_pins motor_enc_3/clk] [get_bd_pins motor_enc_2/clk] [get_bd_pins axi_gpio_0/s_axi_aclk] [get_bd_pins axi_interconnect_0/M05_ACLK] [get_bd_pins axi_gpio_1/s_axi_aclk] [get_bd_pins axi_interconnect_0/M06_ACLK] [get_bd_pins motor_enc_0/clk]
+  connect_bd_net -net s_axi_aresetn_1 [get_bd_pins s_axi_aresetn] [get_bd_pins axi_timer_drv4/s_axi_aresetn] [get_bd_pins axi_timer_drv3/s_axi_aresetn] [get_bd_pins axi_gpio_dir/s_axi_aresetn] [get_bd_pins axi_timer_drv2/s_axi_aresetn] [get_bd_pins axi_timer_drv1/s_axi_aresetn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/M01_ARESETN] [get_bd_pins axi_interconnect_0/M02_ARESETN] [get_bd_pins axi_interconnect_0/M03_ARESETN] [get_bd_pins axi_interconnect_0/M04_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_gpio_0/s_axi_aresetn] [get_bd_pins axi_interconnect_0/M05_ARESETN] [get_bd_pins axi_gpio_1/s_axi_aresetn] [get_bd_pins axi_interconnect_0/M06_ARESETN]
   connect_bd_net -net xlslice_0_Dout [get_bd_pins xlslice_0/Dout] [get_bd_pins Drive_DIR_1]
   connect_bd_net -net xlslice_1_Dout [get_bd_pins xlslice_1/Dout] [get_bd_pins Drive_DIR_3]
 
@@ -844,6 +930,10 @@ proc create_root_design { parentCell } {
   set NENBL_5 [ create_bd_port -dir O -from 0 -to 0 -type data NENBL_5 ]
   set NSLEEP_5 [ create_bd_port -dir O -from 0 -to 0 -type data NSLEEP_5 ]
   set STEP_5 [ create_bd_port -dir O -type data STEP_5 ]
+  set Breakout2_1 [ create_bd_port -dir O -from 0 -to 0 -type data Breakout2_1 ]
+  set Breakout2_2 [ create_bd_port -dir O -from 0 -to 0 -type data Breakout2_2 ]
+  set Breakout2_8 [ create_bd_port -dir O -from 0 -to 0 -type data Breakout2_8 ]
+  set Breakout2_9 [ create_bd_port -dir O -from 0 -to 0 -type data Breakout2_9 ]
 
   # Create instance: processing_system7_0, and set properties
   set processing_system7_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 processing_system7_0 ]
@@ -1183,7 +1273,7 @@ proc create_root_design { parentCell } {
   # Create instance: axi_interconnect_0, and set properties
   set axi_interconnect_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_interconnect_0 ]
   set_property -dict [list \
-    CONFIG.NUM_MI {10} \
+    CONFIG.NUM_MI {4} \
     CONFIG.NUM_SI {2} \
     CONFIG.S00_HAS_DATA_FIFO {2} \
     CONFIG.S01_HAS_DATA_FIFO {2} \
@@ -1204,16 +1294,9 @@ proc create_root_design { parentCell } {
   set xlconstant_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 xlconstant_0 ]
 
   # Create interface connections
-  connect_bd_intf_net -intf_net S_AXI1_1 [get_bd_intf_pins lighting/S_AXI1] [get_bd_intf_pins axi_interconnect_0/M09_AXI]
-  connect_bd_intf_net -intf_net S_AXI2_1 [get_bd_intf_pins lighting/S_AXI2] [get_bd_intf_pins axi_interconnect_0/M06_AXI]
-  connect_bd_intf_net -intf_net S_AXI3_1 [get_bd_intf_pins lighting/S_AXI3] [get_bd_intf_pins axi_interconnect_0/M07_AXI]
-  connect_bd_intf_net -intf_net S_AXI_1 [get_bd_intf_pins lighting/S_AXI] [get_bd_intf_pins axi_interconnect_0/M08_AXI]
   connect_bd_intf_net -intf_net axi_interconnect_0_M00_AXI [get_bd_intf_pins axi_interconnect_0/M00_AXI] [get_bd_intf_pins drive/S_AXI]
-  connect_bd_intf_net -intf_net axi_interconnect_0_M01_AXI [get_bd_intf_pins axi_interconnect_0/M01_AXI] [get_bd_intf_pins drive/S_AXI1]
-  connect_bd_intf_net -intf_net axi_interconnect_0_M02_AXI [get_bd_intf_pins axi_interconnect_0/M02_AXI] [get_bd_intf_pins drive/S_AXI2]
-  connect_bd_intf_net -intf_net axi_interconnect_0_M03_AXI [get_bd_intf_pins axi_interconnect_0/M03_AXI] [get_bd_intf_pins drive/S_AXI3]
-  connect_bd_intf_net -intf_net axi_interconnect_0_M04_AXI [get_bd_intf_pins axi_interconnect_0/M04_AXI] [get_bd_intf_pins drive/S_AXI4]
-  connect_bd_intf_net -intf_net axi_interconnect_0_M05_AXI [get_bd_intf_pins axi_interconnect_0/M05_AXI] [get_bd_intf_pins gantry/S00_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M01_AXI [get_bd_intf_pins axi_interconnect_0/M01_AXI] [get_bd_intf_pins lighting/S_AXI]
+  connect_bd_intf_net -intf_net axi_interconnect_0_M02_AXI [get_bd_intf_pins axi_interconnect_0/M02_AXI] [get_bd_intf_pins gantry/S00_AXI]
   connect_bd_intf_net -intf_net processing_system7_0_DDR [get_bd_intf_ports DDR] [get_bd_intf_pins processing_system7_0/DDR]
   connect_bd_intf_net -intf_net processing_system7_0_FIXED_IO [get_bd_intf_ports FIXED_IO] [get_bd_intf_pins processing_system7_0/FIXED_IO]
   connect_bd_intf_net -intf_net processing_system7_0_M_AXI_GP0 [get_bd_intf_pins processing_system7_0/M_AXI_GP0] [get_bd_intf_pins axi_interconnect_0/S00_AXI]
@@ -1269,37 +1352,40 @@ proc create_root_design { parentCell } {
   connect_bd_net -net lighting_Flood_Light_2 [get_bd_pins lighting/Flood_Light_2] [get_bd_ports Flood_Light_2]
   connect_bd_net -net lighting_Flood_Light_3 [get_bd_pins lighting/Flood_Light_3] [get_bd_ports Flood_Light_3]
   connect_bd_net -net lighting_Flood_Light_4 [get_bd_pins lighting/Flood_Light_4] [get_bd_ports Flood_Light_4]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins rst_ps7_0_100M/slowest_sync_clk] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/M_AXI_GP1_ACLK] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/M01_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins axi_interconnect_0/S01_ACLK] [get_bd_pins axi_interconnect_0/M02_ACLK] [get_bd_pins axi_interconnect_0/M03_ACLK] [get_bd_pins axi_interconnect_0/M04_ACLK] [get_bd_pins axi_interconnect_0/M05_ACLK] [get_bd_pins axi_interconnect_0/M06_ACLK] [get_bd_pins axi_interconnect_0/M07_ACLK] [get_bd_pins axi_interconnect_0/M08_ACLK] [get_bd_pins axi_interconnect_0/M09_ACLK] [get_bd_pins drive/s_axi_aclk] [get_bd_pins gantry/s_axi_aclk] [get_bd_pins lighting/s_axi_aclk]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins rst_ps7_0_100M/slowest_sync_clk] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/M_AXI_GP1_ACLK] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/M01_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins axi_interconnect_0/M02_ACLK] [get_bd_pins axi_interconnect_0/M03_ACLK] [get_bd_pins drive/s_axi_aclk] [get_bd_pins gantry/s_axi_aclk] [get_bd_pins lighting/s_axi_aclk] [get_bd_pins axi_interconnect_0/S01_ACLK]
   connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins processing_system7_0/FCLK_RESET0_N] [get_bd_pins rst_ps7_0_100M/ext_reset_in]
-  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins rst_ps7_0_100M/peripheral_aresetn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/M01_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_interconnect_0/S01_ARESETN] [get_bd_pins axi_interconnect_0/M02_ARESETN] [get_bd_pins axi_interconnect_0/M03_ARESETN] [get_bd_pins axi_interconnect_0/M04_ARESETN] [get_bd_pins axi_interconnect_0/M05_ARESETN] [get_bd_pins axi_interconnect_0/M06_ARESETN] [get_bd_pins axi_interconnect_0/M07_ARESETN] [get_bd_pins axi_interconnect_0/M08_ARESETN] [get_bd_pins axi_interconnect_0/M09_ARESETN] [get_bd_pins drive/s_axi_aresetn] [get_bd_pins gantry/s_axi_aresetn] [get_bd_pins lighting/s_axi_aresetn]
-  connect_bd_net -net xlconstant_0_dout [get_bd_pins xlconstant_0/dout] [get_bd_ports Breakout1_14]
+  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins rst_ps7_0_100M/peripheral_aresetn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/M01_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_interconnect_0/M02_ARESETN] [get_bd_pins axi_interconnect_0/M03_ARESETN] [get_bd_pins drive/s_axi_aresetn] [get_bd_pins gantry/s_axi_aresetn] [get_bd_pins lighting/s_axi_aresetn] [get_bd_pins axi_interconnect_0/S01_ARESETN]
+  connect_bd_net -net xlconstant_0_dout [get_bd_pins xlconstant_0/dout] [get_bd_ports Breakout1_14] [get_bd_ports Breakout2_1] [get_bd_ports Breakout2_2] [get_bd_ports Breakout2_8] [get_bd_ports Breakout2_9]
 
   # Create address segments
-  assign_bd_address -offset 0x40040000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir1/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40050000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir2/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40060000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir3/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40070000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir4/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40080000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir5/S_AXI/Reg] -force
-  assign_bd_address -dict [list offset 0x7FFF8000 range 0x00008000 offset 0x80000000 range 0x00008000] -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_gpio_dir/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40090000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_rst/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400A0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step1/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400B0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step2/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400C0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step3/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400D0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step4/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400E0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step5/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400F0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_brakelight/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40000000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv1/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40010000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv2/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40020000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv3/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40030000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv4/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40100000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_headlight_lower/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40110000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_headlight_upper/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40120000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_workcell/S_AXI/Reg] -force
+  assign_bd_address -dict [list offset 0x7FFF8000 range 0x00008000 offset 0x80000000 range 0x00008000] -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_gpio_0/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40000000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_gpio_1/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40060000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir1/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40070000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir2/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40080000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir3/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40090000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir4/S_AXI/Reg] -force
+  assign_bd_address -offset 0x400A0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir5/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40010000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_gpio_dir/S_AXI/Reg] -force
+  assign_bd_address -offset 0x400B0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_rst/S_AXI/Reg] -force
+  assign_bd_address -offset 0x400C0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step1/S_AXI/Reg] -force
+  assign_bd_address -offset 0x400D0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step2/S_AXI/Reg] -force
+  assign_bd_address -offset 0x400E0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step3/S_AXI/Reg] -force
+  assign_bd_address -offset 0x400F0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step4/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40100000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step5/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40110000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_brakelight/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40020000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv1/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40030000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv2/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40040000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv3/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40050000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv4/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40120000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_headlight_lower/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40130000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_headlight_upper/S_AXI/Reg] -force
+  assign_bd_address -offset 0x40140000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_workcell/S_AXI/Reg] -force
 
 
   # Restore current instance
   current_bd_instance $oldCurInst
 
+  validate_bd_design
   save_bd_design
 }
 # End of create_root_design()
@@ -1311,6 +1397,4 @@ proc create_root_design { parentCell } {
 
 create_root_design ""
 
-
-common::send_gid_msg -ssname BD::TCL -id 2053 -severity "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
 
