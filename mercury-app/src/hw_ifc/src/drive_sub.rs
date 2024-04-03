@@ -7,8 +7,8 @@ pub mod regmap;
 pub mod zynq;
 use self::chassis_model::{ChassisModel, MotorCtrlCmdGroup, WheelPositions};
 use self::regmap::{
-    DRV_DIR_GPIO_ADDR, DRV_TIMER_BACK_LEFT_ADDR, DRV_TIMER_BACK_RIGHT_ADDR,
-    DRV_TIMER_FRONT_LEFT_ADDR, DRV_TIMER_FRONT_RIGHT_ADDR, DRV_DRIVE_ENABLE_ADDR,
+    DRV_DIR_GPIO_ADDR, DRV_DRIVE_ENABLE_ADDR, DRV_TIMER_BACK_LEFT_ADDR, DRV_TIMER_BACK_RIGHT_ADDR,
+    DRV_TIMER_FRONT_LEFT_ADDR, DRV_TIMER_FRONT_RIGHT_ADDR,
 };
 use zynq::axigpio::{GPIOChannel, AXIGPIO, SIZEOF_AXIGPIO_REG};
 use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
@@ -66,8 +66,12 @@ impl DriveController {
     }
 
     fn send_motor_commands(&self, motor_commands: MotorCtrlCmdGroup) {
-        let left_pwm_u32 = motor_commands[WheelPositions::LeftWheels].dutycycle.clamp(0, u32::MAX);
-        let right_pwm_u32 = motor_commands[WheelPositions::RightWheels].dutycycle.clamp(0, u32::MAX);
+        let left_pwm_u32 = motor_commands[WheelPositions::LeftWheels]
+            .dutycycle
+            .clamp(0, u32::MAX);
+        let right_pwm_u32 = motor_commands[WheelPositions::RightWheels]
+            .dutycycle
+            .clamp(0, u32::MAX);
 
         /* Set the directions */
         self.direction_ctrl.lock().unwrap().write_gpio(
@@ -80,16 +84,15 @@ impl DriveController {
         );
 
         if ((left_pwm_u32 == 0) | (right_pwm_u32 == 0)) {
-            self.drv_enable.lock().unwrap().write_gpio(
-                0,
-                GPIOChannel::GpioChannel1,
-            );
-        }
-        else {
-            self.drv_enable.lock().unwrap().write_gpio(
-                1,
-                GPIOChannel::GpioChannel1,
-            );
+            self.drv_enable
+                .lock()
+                .unwrap()
+                .write_gpio(0, GPIOChannel::GpioChannel1);
+        } else {
+            self.drv_enable
+                .lock()
+                .unwrap()
+                .write_gpio(1, GPIOChannel::GpioChannel1);
         }
 
         /* Set PWM Duty Cycles */
@@ -161,7 +164,7 @@ fn main() {
         pwm_back_right,
         pwm_back_left,
         direction_control,
-        drive_enable
+        drive_enable,
     );
 
     /*

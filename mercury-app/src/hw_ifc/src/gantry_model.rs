@@ -1,9 +1,9 @@
 /* Model Describing the Behavior of the Gantry */
 use std::ops::{Index, IndexMut};
 
-pub const MM_PER_STEP : f64 = 0.025;
-pub const GANTRY_X_MAX_MM : f64 = 160.0;
-pub const GANTRY_Y_MAX_MM : f64 = 120.0;
+pub const MM_PER_STEP: f64 = 0.025;
+pub const GANTRY_X_MAX_MM: f64 = 160.0;
+pub const GANTRY_Y_MAX_MM: f64 = 120.0;
 
 pub enum GantryAxes {
     X,
@@ -115,14 +115,15 @@ impl GantryModel {
     }
 
     pub fn calc_control_signals(&mut self, target_position: GantryPosition) -> StepperCtrlCmdGroup {
-        let x_steps =
-            ((target_position[GantryAxes::X] - self.current_position[GantryAxes::X]) / MM_PER_STEP) as i32;
-        let y_steps =
-            ((target_position[GantryAxes::Y] - self.current_position[GantryAxes::Y]) / MM_PER_STEP) as i32;
-        let z_steps =
-            ((target_position[GantryAxes::Z] - self.current_position[GantryAxes::Z]) / MM_PER_STEP) as i32;
-        let z_prime_steps =
-            ((target_position[GantryAxes::ZPrime] - self.current_position[GantryAxes::ZPrime]) / MM_PER_STEP) as i32;
+        let x_steps = ((target_position[GantryAxes::X] - self.current_position[GantryAxes::X])
+            / MM_PER_STEP) as i32;
+        let y_steps = ((target_position[GantryAxes::Y] - self.current_position[GantryAxes::Y])
+            / MM_PER_STEP) as i32;
+        let z_steps = ((target_position[GantryAxes::Z] - self.current_position[GantryAxes::Z])
+            / MM_PER_STEP) as i32;
+        let z_prime_steps = ((target_position[GantryAxes::ZPrime]
+            - self.current_position[GantryAxes::ZPrime])
+            / MM_PER_STEP) as i32;
 
         // Update current position
         self.current_position = target_position;

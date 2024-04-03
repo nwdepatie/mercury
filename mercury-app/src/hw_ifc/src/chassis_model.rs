@@ -92,10 +92,7 @@ impl ChassisModel {
             .abs()
             .max(cmds[WheelPositions::RightWheels].speed.abs());
 
-        rosrust::ros_info!(
-            "Max Speed {}",
-            max_wheel_speed
-        );
+        rosrust::ros_info!("Max Speed {}", max_wheel_speed);
 
         /* Normalize wheel speeds if exceeding MAX_SPEED */
         if max_wheel_speed > self.max_speed {
@@ -111,14 +108,14 @@ impl ChassisModel {
             cmds[WheelPositions::RightWheels].speed
         );
 
-        let rpm_to_rad_per_s = 2.0 * PI / 60.0;  // Conversion factor from RPM to rad/s
-        // Max RPM
+        let rpm_to_rad_per_s = 2.0 * PI / 60.0; // Conversion factor from RPM to rad/s
+                                                // Max RPM
         let max_rpm = 4000.0;
         let rad_per_s_high = max_rpm * rpm_to_rad_per_s;
 
         /* Convert normalized wheel speeds to PWM duty cycle and direction */
         cmds[WheelPositions::LeftWheels].speed /= rad_per_s_high;
-        cmds[WheelPositions::RightWheels].speed /=  rad_per_s_high;
+        cmds[WheelPositions::RightWheels].speed /= rad_per_s_high;
         rosrust::ros_info!(
             "Left Vel/RPM Scaled: {} (from 0 to 1), Right Vel/RPM Scaled: {} rad/s",
             cmds[WheelPositions::LeftWheels].speed,

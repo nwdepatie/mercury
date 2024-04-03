@@ -2,13 +2,17 @@
 use rosrust;
 use rosrust::ros_info;
 pub mod gantry_model;
-use self::gantry_model::{GantryAxes, GantryModel, GantryPosition, StepperCtrlCmdGroup, MM_PER_STEP, GANTRY_X_MAX_MM, GANTRY_Y_MAX_MM};
+use self::gantry_model::{
+    GantryAxes, GantryModel, GantryPosition, StepperCtrlCmdGroup, GANTRY_X_MAX_MM, GANTRY_Y_MAX_MM,
+    MM_PER_STEP,
+};
 use std::sync::{Arc, Mutex};
 pub mod zynq;
 use rosrust_msg::geometry_msgs::Twist;
 use std::thread;
 use std::time::Duration;
 use zynq::axigpio::{GPIOChannel, AXIGPIO, SIZEOF_AXIGPIO_REG};
+use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
 
 pub mod msg {
     rosrust::rosmsg_include!(
@@ -22,7 +26,34 @@ pub mod regmap;
 use self::regmap::{
     GANTRY_DIR1_ADDR, GANTRY_DIR2_ADDR, GANTRY_DIR3_ADDR, GANTRY_DIR4_ADDR, GANTRY_DIR5_ADDR,
     GANTRY_STEP1_ADDR, GANTRY_STEP2_ADDR, GANTRY_STEP3_ADDR, GANTRY_STEP4_ADDR, GANTRY_STEP5_ADDR,
+    SERVO_PWM_ADDR,
 };
+
+pub struct ServoController {
+    timer : AXITimer,
+}
+
+impl ServoController {
+    pub fn new(timer: AXITimer) -> ServoController {
+        ServoController {
+            timer: timer,
+        }
+    }
+
+    pub fn grip(&mut self) {
+        self.timer.start_pwm(2000, 54);
+        thread::sleep(Duration::from_millis(3000));
+        self.timer.start_pwm(2000, 75);
+    }
+
+    pub fn release(&mut self) {
+        self.timer.start_pwm(2000, 94);
+        thread::sleep(Duration::from_millis(5000));
+        //self.timer.start_pwm(2000, 54);
+        thread::sleep(Duration::from_millis(50));
+        self.timer.start_pwm(2000, 75);
+    }
+}
 
 pub struct StepperController {
     direction_control: AXIGPIO,
@@ -64,6 +95,7 @@ pub struct GantryController {
     stepper3: Arc<Mutex<StepperController>>,
     stepper4: Arc<Mutex<StepperController>>,
     stepper5: Arc<Mutex<StepperController>>,
+    servo: Arc<Mutex<ServoController>>,
     reset: Arc<Mutex<AXIGPIO>>,
 }
 
@@ -74,6 +106,7 @@ impl GantryController {
         stepper3: Arc<Mutex<StepperController>>,
         stepper4: Arc<Mutex<StepperController>>,
         stepper5: Arc<Mutex<StepperController>>,
+        servo: Arc<Mutex<ServoController>>,
         reset: Arc<Mutex<AXIGPIO>>,
     ) -> Self {
         GantryController {
@@ -83,6 +116,7 @@ impl GantryController {
             stepper3: stepper3,
             stepper4: stepper4,
             stepper5: stepper5,
+            servo: servo,
             reset: reset,
         }
     }
@@ -155,7 +189,7 @@ impl GantryController {
         }
     }
 
-    fn actuate_eoat(&mut self, z_tune : f64) {
+    fn actuate_eoat(&mut self, z_tune: f64) {
         let current_pos = self.model.get_position();
 
         /* Lower z1 axis by 72mm */
@@ -193,6 +227,7 @@ impl GantryController {
         let stepper_cmds = self.model.calc_control_signals(lower_z);
         self.write_steppers(stepper_cmds);
         let current_pos = self.model.get_position();
+        self.servo.lock().unwrap().grip();
 
         /* Fully retract z axis (should b 156mm) */
         let mut raise_z = current_pos.clone();
@@ -204,6 +239,7 @@ impl GantryController {
         /* Optional, move over trash */
 
         /* Open servo */
+        self.servo.lock().unwrap().release();
 
         /* Lower z1 by 72mm */
         let mut lower_z1 = current_pos.clone();
@@ -221,26 +257,16 @@ impl GantryController {
 
     pub fn move_callback(&mut self, data: rosrust_msg::mercury_services::movegantryReq) {
         /* Zero everything */
-        let stepper_cmds = self.model.calc_control_signals(GantryPosition::new(
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-        ));
+        let stepper_cmds = self
+            .model
+            .calc_control_signals(GantryPosition::new(0.0, 0.0, 0.0, 0.0));
         self.write_steppers(stepper_cmds);
 
-        let stepper_cmds = self.model.calc_control_signals(GantryPosition::new(
-            data.x,
-            data.y,
-            0.0,
-            0.0,
-        ));
+        let stepper_cmds = self
+            .model
+            .calc_control_signals(GantryPosition::new(data.x, data.y, 0.0, 0.0));
 
-        rosrust::ros_info!(
-            "X:{}\tY:{}\t",
-            data.x,
-            data.y,
-        );
+        rosrust::ros_info!("X:{}\tY:{}\t", data.x, data.y,);
 
         /* Move Gantry over weed */
         self.write_steppers(stepper_cmds);
@@ -249,12 +275,9 @@ impl GantryController {
         self.actuate_eoat(data.z_buffer);
 
         /* Zero everything */
-        let stepper_cmds = self.model.calc_control_signals(GantryPosition::new(
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-        ));
+        let stepper_cmds = self
+            .model
+            .calc_control_signals(GantryPosition::new(0.0, 0.0, 0.0, 0.0));
         self.write_steppers(stepper_cmds);
     }
 
@@ -265,7 +288,13 @@ impl GantryController {
 
         rosrust::ros_info!("CALIBRATING...");
 
-        self.write_steppers(stepper_cmds);
+        self.servo.lock().unwrap().grip();
+
+        thread::sleep(Duration::from_secs(2));
+
+        self.servo.lock().unwrap().release();
+
+        //self.write_steppers(stepper_cmds);
     }
 
     pub fn drive_pos_callback(&mut self) {
@@ -339,12 +368,16 @@ fn main() {
         AXIGPIO::new(GANTRY_STEP5_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
     )));
 
+    let servo = Arc::new(Mutex::new(ServoController::new(
+        AXITimer::new(SERVO_PWM_ADDR, SIZEOF_AXITIMER_REG).unwrap(),
+    )));
+
     let reset = Arc::new(Mutex::new(
         AXIGPIO::new(GANTRY_DIR3_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
     ));
 
     let gantry_ctrl = Arc::new(Mutex::new(GantryController::new(
-        stepper1, stepper2, stepper3, stepper4, stepper5, reset,
+        stepper1, stepper2, stepper3, stepper4, stepper5, servo, reset,
     )));
 
     /* Create subscriber */

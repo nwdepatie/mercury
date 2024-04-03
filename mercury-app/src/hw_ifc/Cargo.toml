@@ -24,10 +24,6 @@ name = "led_sub"
 path = "src/led_sub.rs"
 
 [[bin]]
-name = "eoat_sub"
-path = "src/eoat_sub.rs"
-
-[[bin]]
 name = "step_test"
 path = "src/step_test.rs"
 
