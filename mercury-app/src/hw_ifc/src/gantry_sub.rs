@@ -2,11 +2,10 @@
 use rosrust;
 use rosrust::ros_info;
 pub mod gantry_model;
-use self::gantry_model::{GantryAxes, GantryModel, GantryPosition, StepperCtrlCmdGroup};
+use self::gantry_model::{GantryAxes, GantryModel, GantryPosition, StepperCtrlCmdGroup, MM_PER_STEP, GANTRY_X_MAX_MM, GANTRY_Y_MAX_MM};
 use std::sync::{Arc, Mutex};
 pub mod zynq;
 use rosrust_msg::geometry_msgs::Twist;
-use std::cmp::max;
 use std::thread;
 use std::time::Duration;
 use zynq::axigpio::{GPIOChannel, AXIGPIO, SIZEOF_AXIGPIO_REG};
@@ -14,7 +13,8 @@ use zynq::axigpio::{GPIOChannel, AXIGPIO, SIZEOF_AXIGPIO_REG};
 pub mod msg {
     rosrust::rosmsg_include!(
         mercury_services / movegantry,
-        mercury_services / calibrategantry
+        mercury_services / calibrategantry,
+        mercury_services / rtdgantry,
     );
 }
 
@@ -23,8 +23,6 @@ use self::regmap::{
     GANTRY_DIR1_ADDR, GANTRY_DIR2_ADDR, GANTRY_DIR3_ADDR, GANTRY_DIR4_ADDR, GANTRY_DIR5_ADDR,
     GANTRY_STEP1_ADDR, GANTRY_STEP2_ADDR, GANTRY_STEP3_ADDR, GANTRY_STEP4_ADDR, GANTRY_STEP5_ADDR,
 };
-
-pub const STEPPER_SPEED: f64 = 770.0; /* Ticks/s */
 
 pub struct StepperController {
     direction_control: AXIGPIO,
@@ -94,7 +92,7 @@ impl GantryController {
             self.stepper2
                 .lock()
                 .unwrap()
-                .set_direction(stepper_cmds[GantryAxes::X].steps > 0);
+                .set_direction(stepper_cmds[GantryAxes::X].steps < 0); /* true = robot forward */
             self.stepper2
                 .lock()
                 .unwrap()
@@ -102,7 +100,7 @@ impl GantryController {
             self.stepper3
                 .lock()
                 .unwrap()
-                .set_direction(stepper_cmds[GantryAxes::X].steps > 0);
+                .set_direction(stepper_cmds[GantryAxes::X].steps < 0);
             self.stepper3
                 .lock()
                 .unwrap()
@@ -112,7 +110,7 @@ impl GantryController {
             self.stepper4
                 .lock()
                 .unwrap()
-                .set_direction(stepper_cmds[GantryAxes::Y].steps > 0);
+                .set_direction(stepper_cmds[GantryAxes::Y].steps < 0); /* true = robot left */
             self.stepper4
                 .lock()
                 .unwrap()
@@ -122,7 +120,7 @@ impl GantryController {
             self.stepper5
                 .lock()
                 .unwrap()
-                .set_direction(stepper_cmds[GantryAxes::Z].steps > 0);
+                .set_direction(stepper_cmds[GantryAxes::Z].steps > 0); /* false = robot up */
             self.stepper5
                 .lock()
                 .unwrap()
@@ -132,46 +130,132 @@ impl GantryController {
             self.stepper1
                 .lock()
                 .unwrap()
-                .set_direction(stepper_cmds[GantryAxes::ZPrime].steps > 0);
+                .set_direction(stepper_cmds[GantryAxes::ZPrime].steps > 0); /* false = robot up */
             self.stepper1
                 .lock()
                 .unwrap()
                 .write_step_cmd(i32::abs(stepper_cmds[GantryAxes::ZPrime].steps) as u32);
         }
+
+        /* Wait for all commands to finish */
+        while !self.stepper1.lock().unwrap().read_done() {
+            thread::sleep(Duration::from_secs(1));
+        }
+        while !self.stepper2.lock().unwrap().read_done() {
+            thread::sleep(Duration::from_secs(1));
+        }
+        while !self.stepper3.lock().unwrap().read_done() {
+            thread::sleep(Duration::from_secs(1));
+        }
+        while !self.stepper4.lock().unwrap().read_done() {
+            thread::sleep(Duration::from_secs(1));
+        }
+        while !self.stepper5.lock().unwrap().read_done() {
+            thread::sleep(Duration::from_secs(1));
+        }
+    }
+
+    fn actuate_eoat(&mut self, z_tune : f64) {
+        let current_pos = self.model.get_position();
+
+        /* Lower z1 axis by 72mm */
+        let mut lower_z1 = current_pos.clone();
+        lower_z1[GantryAxes::ZPrime] += 72.0;
+        let stepper_cmds = self.model.calc_control_signals(lower_z1);
+        self.write_steppers(stepper_cmds);
+        let current_pos = self.model.get_position();
+
+        /* Lower z axis by *140mm + configurable buffer for distance to ground */
+        let mut lower_z = current_pos.clone();
+        lower_z[GantryAxes::Z] += (60.0 + z_tune);
+        let stepper_cmds = self.model.calc_control_signals(lower_z);
+        self.write_steppers(stepper_cmds);
+        let current_pos = self.model.get_position();
+
+        /* Simulataneously lower z axis and raise z1 axis by 45mm */
+        let mut lower_z_z1 = current_pos.clone();
+        lower_z_z1[GantryAxes::Z] += 45.0;
+        lower_z_z1[GantryAxes::ZPrime] -= 45.0;
+        let stepper_cmds = self.model.calc_control_signals(lower_z_z1);
+        self.write_steppers(stepper_cmds);
+        let current_pos = self.model.get_position();
+
+        /* Fully retract z1 27mm up */
+        let mut raise_z1 = current_pos.clone();
+        raise_z1[GantryAxes::ZPrime] -= 27.0;
+        let stepper_cmds = self.model.calc_control_signals(raise_z1);
+        self.write_steppers(stepper_cmds);
+        let current_pos = self.model.get_position();
+
+        /* Simultaneously rotate servo for X seconds and lower z by 16mm */
+        let mut lower_z = current_pos.clone();
+        lower_z[GantryAxes::Z] += 16.0;
+        let stepper_cmds = self.model.calc_control_signals(lower_z);
+        self.write_steppers(stepper_cmds);
+        let current_pos = self.model.get_position();
+
+        /* Fully retract z axis (should b 156mm) */
+        let mut raise_z = current_pos.clone();
+        raise_z[GantryAxes::Z] -= (121.0 + z_tune);
+        let stepper_cmds = self.model.calc_control_signals(raise_z);
+        self.write_steppers(stepper_cmds);
+        let current_pos = self.model.get_position();
+
+        /* Optional, move over trash */
+
+        /* Open servo */
+
+        /* Lower z1 by 72mm */
+        let mut lower_z1 = current_pos.clone();
+        lower_z1[GantryAxes::ZPrime] += 72.0;
+        let stepper_cmds = self.model.calc_control_signals(lower_z1);
+        self.write_steppers(stepper_cmds);
+        let current_pos = self.model.get_position();
+
+        /* Raise z1 by 72mm */
+        let mut lower_z1 = current_pos.clone();
+        lower_z1[GantryAxes::ZPrime] -= 72.0;
+        let stepper_cmds = self.model.calc_control_signals(lower_z1);
+        self.write_steppers(stepper_cmds);
     }
 
     pub fn move_callback(&mut self, data: rosrust_msg::mercury_services::movegantryReq) {
+        /* Zero everything */
+        let stepper_cmds = self.model.calc_control_signals(GantryPosition::new(
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        ));
+        self.write_steppers(stepper_cmds);
+
         let stepper_cmds = self.model.calc_control_signals(GantryPosition::new(
             data.x,
             data.y,
-            data.z,
-            data.z_prime,
+            0.0,
+            0.0,
         ));
 
         rosrust::ros_info!(
-            "X:{}\tY:{}\tZ:{}\tZ':{}",
+            "X:{}\tY:{}\t",
             data.x,
             data.y,
-            data.z,
-            data.z_prime
         );
 
-        let max_steps = max(
-            max(
-                i32::abs(stepper_cmds[GantryAxes::X].steps),
-                i32::abs(stepper_cmds[GantryAxes::Y].steps),
-            ),
-            max(
-                i32::abs(stepper_cmds[GantryAxes::Z].steps),
-                i32::abs(stepper_cmds[GantryAxes::ZPrime].steps),
-            ),
-        ) as f64;
-
+        /* Move Gantry over weed */
         self.write_steppers(stepper_cmds);
 
-        ros_info!("Waiting {} s", max_steps / STEPPER_SPEED);
+        /* Actuate End Effector */
+        self.actuate_eoat(data.z_buffer);
 
-        thread::sleep(Duration::from_secs_f64(max_steps / STEPPER_SPEED));
+        /* Zero everything */
+        let stepper_cmds = self.model.calc_control_signals(GantryPosition::new(
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        ));
+        self.write_steppers(stepper_cmds);
     }
 
     pub fn calibrate_callback(&mut self) {
@@ -181,6 +265,16 @@ impl GantryController {
 
         rosrust::ros_info!("CALIBRATING...");
 
+        self.write_steppers(stepper_cmds);
+    }
+
+    pub fn drive_pos_callback(&mut self) {
+        let stepper_cmds = self.model.calc_control_signals(GantryPosition::new(
+            GANTRY_X_MAX_MM,
+            GANTRY_Y_MAX_MM,
+            0.0,
+            0.0,
+        ));
         self.write_steppers(stepper_cmds);
     }
 
@@ -275,6 +369,19 @@ fn main() {
             gantry_ctrl.calibrate_callback();
 
             Ok(rosrust_msg::mercury_services::calibrategantryRes { status: true })
+        },
+    )
+    .unwrap();
+
+    /* Create service (ready to drive)*/
+    let gantry_ctrl_clone = gantry_ctrl.clone();
+    let _service_rtd = rosrust::service::<rosrust_msg::mercury_services::rtdgantry, _>(
+        "/services/gantry/readytodrive",
+        move |_| {
+            let mut gantry_ctrl = gantry_ctrl_clone.lock().unwrap();
+            gantry_ctrl.drive_pos_callback();
+
+            Ok(rosrust_msg::mercury_services::rtdgantryRes { status: true })
         },
     )
     .unwrap();
