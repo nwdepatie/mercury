@@ -8,7 +8,7 @@ pub mod zynq;
 use self::chassis_model::{ChassisModel, MotorCtrlCmdGroup, WheelPositions};
 use self::regmap::{
     DRV_DIR_GPIO_ADDR, DRV_TIMER_BACK_LEFT_ADDR, DRV_TIMER_BACK_RIGHT_ADDR,
-    DRV_TIMER_FRONT_LEFT_ADDR, DRV_TIMER_FRONT_RIGHT_ADDR,
+    DRV_TIMER_FRONT_LEFT_ADDR, DRV_TIMER_FRONT_RIGHT_ADDR, DRV_DRIVE_ENABLE_ADDR,
 };
 use zynq::axigpio::{GPIOChannel, AXIGPIO, SIZEOF_AXIGPIO_REG};
 use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
@@ -21,6 +21,7 @@ const BOT_LENGTH: f32 = 0.20; /* meters */
 
 type PWMController = Arc<Mutex<AXITimer>>;
 type DirectionController = Arc<Mutex<AXIGPIO>>;
+type DriveEnable = Arc<Mutex<AXIGPIO>>;
 
 pub struct DriveController {
     model: ChassisModel,
@@ -29,6 +30,7 @@ pub struct DriveController {
     pwm_back_left: PWMController,
     pwm_back_right: PWMController,
     direction_ctrl: DirectionController,
+    drv_enable: DriveEnable,
 }
 
 impl DriveController {
@@ -38,6 +40,7 @@ impl DriveController {
         pwm_back_left: PWMController,
         pwm_back_right: PWMController,
         direction_ctrl: DirectionController,
+        drv_enable: DriveEnable,
     ) -> Self {
         /* Parameters */
         let wheel_radius = WHEEL_RADIUS;
@@ -58,6 +61,7 @@ impl DriveController {
             pwm_back_left,
             pwm_back_right,
             direction_ctrl,
+            drv_enable,
         }
     }
 
@@ -74,6 +78,19 @@ impl DriveController {
             motor_commands[WheelPositions::RightWheels].direction as u32,
             GPIOChannel::GpioChannel2,
         );
+
+        if ((left_pwm_u32 == 0) | (right_pwm_u32 == 0)) {
+            self.drv_enable.lock().unwrap().write_gpio(
+                0,
+                GPIOChannel::GpioChannel1,
+            );
+        }
+        else {
+            self.drv_enable.lock().unwrap().write_gpio(
+                1,
+                GPIOChannel::GpioChannel1,
+            );
+        }
 
         /* Set PWM Duty Cycles */
         self.pwm_front_left
@@ -134,6 +151,9 @@ fn main() {
     let direction_control = Arc::new(Mutex::new(
         AXIGPIO::new(DRV_DIR_GPIO_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
     ));
+    let drive_enable = Arc::new(Mutex::new(
+        AXIGPIO::new(DRV_DRIVE_ENABLE_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
+    ));
 
     let drive_ctrl = DriveController::new(
         pwm_front_right,
@@ -141,6 +161,7 @@ fn main() {
         pwm_back_right,
         pwm_back_left,
         direction_control,
+        drive_enable
     );
 
     /*
