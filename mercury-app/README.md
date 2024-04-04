@@ -8,7 +8,8 @@ I've included a Dockerfile and Docker Compose for maintaining any system environ
 
 To easily build the project:
 1. `docker compose run --rm --build mercury_app`
-2. `catkin_make`
+2. `catkin_make # Might need to run twice after sourcing devel/setup.bash`
+3. SCP binary over to platform (`scp ./src/hw_ifc/build/cargo/armv7yadayada/release/binary`) 
 
 ## Instructions for Testing
 
