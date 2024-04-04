@@ -42,15 +42,17 @@ impl ServoController {
 
     pub fn grip(&mut self) {
         self.timer.start_pwm(2000, 54);
-        thread::sleep(Duration::from_millis(3000));
+        thread::sleep(Duration::from_millis(8000));
+        self.timer.start_pwm(2000, 65);
         self.timer.start_pwm(2000, 75);
     }
 
     pub fn release(&mut self) {
         self.timer.start_pwm(2000, 94);
-        thread::sleep(Duration::from_millis(5000));
+        thread::sleep(Duration::from_millis(8000));
         //self.timer.start_pwm(2000, 54);
         thread::sleep(Duration::from_millis(50));
+        self.timer.start_pwm(2000, 85);
         self.timer.start_pwm(2000, 75);
     }
 }
@@ -238,6 +240,7 @@ impl GantryController {
 
         /* Optional, move over trash */
 
+        //thread::sleep(Duration::from_millis(6000));
         /* Open servo */
         self.servo.lock().unwrap().release();
 
@@ -282,19 +285,42 @@ impl GantryController {
     }
 
     pub fn calibrate_callback(&mut self) {
+        rosrust::ros_info!("CALIBRATING...");
+
+        /* Zero everything */
         let stepper_cmds = self
             .model
             .calc_control_signals(GantryPosition::new(0.0, 0.0, 0.0, 0.0));
+        self.write_steppers(stepper_cmds);
 
-        rosrust::ros_info!("CALIBRATING...");
+        return;
 
-        self.servo.lock().unwrap().grip();
+        self.write_steppers(stepper_cmds);
 
-        thread::sleep(Duration::from_secs(2));
+        /* Center this new position as 0,0,0 */
+        while (self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2) != 0) {
+            let current_pos = self.model.get_position();
+            let new_pos = current_pos.clone();
 
-        self.servo.lock().unwrap().release();
+            /* Limit Switches 3 and 1 are X */
+            if ((self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2) & 0b0101) != 0b0101) {
+                new_pos[GantryAxes::X] -= 100.0;
+            }
 
-        //self.write_steppers(stepper_cmds);
+            /* Limit Switch 4 is Y */
+            if ((self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2) & 0b1000) != 0b1000) {
+                new_pos[GantryAxes::Y] -= 100.0;
+            }
+
+            /* Limit Switch 2 is Z */
+            if ((self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2) & 0b0010) != 0b0010) {
+                new_pos[GantryAxes::Z] -= 100.0;
+            }
+            let stepper_cmds = self.model.calc_control_signals(new_pos);
+        }
+
+        /* Center this new position as 0,0,0 */
+        self.model.set_position(GantryPosition::new(0.0, 0.0, 0.0, 0.0));
     }
 
     pub fn drive_pos_callback(&mut self) {
