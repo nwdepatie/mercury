@@ -74,11 +74,11 @@ impl ChassisModel {
         rosrust::ros_info!("Angular Speed: {} m/s", angular_speed);
         rosrust::ros_info!("Wheel Radius: {} m", self.wheel_radius);
 
-        cmds[WheelPositions::LeftWheels].speed = (linear_speed / (2.0 * PI * self.wheel_radius))
-            + (angular_speed / (2.0 * self.wheel_radius));
+        cmds[WheelPositions::LeftWheels].speed = linear_speed + (angular_speed * (self.width as f64)) / 2.0;
+        cmds[WheelPositions::RightWheels].speed = linear_speed - (angular_speed * (self.width as f64)) / 2.0;
 
-        cmds[WheelPositions::RightWheels].speed = (linear_speed / (2.0 * PI * self.wheel_radius))
-            - (angular_speed / (2.0 * self.wheel_radius));
+        cmds[WheelPositions::LeftWheels].speed /= self.wheel_radius;
+        cmds[WheelPositions::RightWheels].speed /= self.wheel_radius;
 
         rosrust::ros_info!(
             "Left Vel/Speed: {} rad/s, Right Vel/Speed: {} rad/s",
