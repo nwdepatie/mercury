@@ -706,6 +706,8 @@ proc create_hier_cell_drive { parentCell nameHier } {
   create_bd_pin -dir O -from 0 -to 0 -type data DriveEn_2
   create_bd_pin -dir O -from 0 -to 0 -type data DriveEn_3
   create_bd_pin -dir O -from 0 -to 0 -type data DriveEn_4
+  create_bd_pin -dir O -from 0 -to 0 Drive_DIR_2
+  create_bd_pin -dir O -from 0 -to 0 Drive_DIR_4
 
   # Create instance: axi_timer_drv2, and set properties
   set axi_timer_drv2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_timer:2.0 axi_timer_drv2 ]
@@ -722,8 +724,8 @@ proc create_hier_cell_drive { parentCell nameHier } {
     CONFIG.C_ALL_OUTPUTS {1} \
     CONFIG.C_ALL_OUTPUTS_2 {1} \
     CONFIG.C_DOUT_DEFAULT {0xFFFFFFFF} \
-    CONFIG.C_GPIO2_WIDTH {1} \
-    CONFIG.C_GPIO_WIDTH {1} \
+    CONFIG.C_GPIO2_WIDTH {2} \
+    CONFIG.C_GPIO_WIDTH {2} \
     CONFIG.C_IS_DUAL {1} \
   ] $axi_gpio_dir
 
@@ -816,6 +818,22 @@ proc create_hier_cell_drive { parentCell nameHier } {
   ] $drive_en
 
 
+  # Create instance: xlslice_2, and set properties
+  set xlslice_2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice:1.0 xlslice_2 ]
+  set_property -dict [list \
+    CONFIG.DIN_FROM {1} \
+    CONFIG.DIN_TO {1} \
+  ] $xlslice_2
+
+
+  # Create instance: xlslice_3, and set properties
+  set xlslice_3 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice:1.0 xlslice_3 ]
+  set_property -dict [list \
+    CONFIG.DIN_FROM {1} \
+    CONFIG.DIN_TO {1} \
+  ] $xlslice_3
+
+
   # Create interface connections
   connect_bd_intf_net -intf_net S_AXI_1 [get_bd_intf_pins S_AXI] [get_bd_intf_pins axi_interconnect_0/S00_AXI]
   connect_bd_intf_net -intf_net axi_interconnect_0_M00_AXI [get_bd_intf_pins axi_interconnect_0/M00_AXI] [get_bd_intf_pins axi_timer_drv1/S_AXI]
@@ -832,8 +850,8 @@ proc create_hier_cell_drive { parentCell nameHier } {
   connect_bd_net -net Speed_SNS_2_1 [get_bd_pins Speed_SNS_2] [get_bd_pins motor_enc_1/motor_pulse]
   connect_bd_net -net Speed_SNS_3_1 [get_bd_pins Speed_SNS_3] [get_bd_pins motor_enc_2/motor_pulse]
   connect_bd_net -net Speed_SNS_4_1 [get_bd_pins Speed_SNS_4] [get_bd_pins motor_enc_3/motor_pulse]
-  connect_bd_net -net axi_gpio_2_gpio2_io_o [get_bd_pins axi_gpio_dir/gpio2_io_o] [get_bd_pins xlslice_1/Din]
-  connect_bd_net -net axi_gpio_2_gpio_io_o [get_bd_pins axi_gpio_dir/gpio_io_o] [get_bd_pins xlslice_0/Din]
+  connect_bd_net -net axi_gpio_2_gpio2_io_o [get_bd_pins axi_gpio_dir/gpio2_io_o] [get_bd_pins xlslice_1/Din] [get_bd_pins xlslice_3/Din]
+  connect_bd_net -net axi_gpio_2_gpio_io_o [get_bd_pins axi_gpio_dir/gpio_io_o] [get_bd_pins xlslice_0/Din] [get_bd_pins xlslice_2/Din]
   connect_bd_net -net axi_timer_2_pwm0 [get_bd_pins axi_timer_drv3/pwm0] [get_bd_pins DAC_2_INA]
   connect_bd_net -net axi_timer_3_pwm0 [get_bd_pins axi_timer_drv4/pwm0] [get_bd_pins DAC_2_INB]
   connect_bd_net -net axi_timer_drv1_pwm0 [get_bd_pins axi_timer_drv1/pwm0] [get_bd_pins DAC_1_INA]
@@ -847,6 +865,8 @@ proc create_hier_cell_drive { parentCell nameHier } {
   connect_bd_net -net s_axi_aresetn_1 [get_bd_pins s_axi_aresetn] [get_bd_pins axi_timer_drv4/s_axi_aresetn] [get_bd_pins axi_timer_drv3/s_axi_aresetn] [get_bd_pins axi_gpio_dir/s_axi_aresetn] [get_bd_pins axi_timer_drv2/s_axi_aresetn] [get_bd_pins axi_timer_drv1/s_axi_aresetn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/M01_ARESETN] [get_bd_pins axi_interconnect_0/M02_ARESETN] [get_bd_pins axi_interconnect_0/M03_ARESETN] [get_bd_pins axi_interconnect_0/M04_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_gpio_0/s_axi_aresetn] [get_bd_pins axi_interconnect_0/M05_ARESETN] [get_bd_pins axi_gpio_1/s_axi_aresetn] [get_bd_pins axi_interconnect_0/M06_ARESETN] [get_bd_pins axi_interconnect_0/M07_ARESETN] [get_bd_pins drive_en/s_axi_aresetn]
   connect_bd_net -net xlslice_0_Dout [get_bd_pins xlslice_0/Dout] [get_bd_pins Drive_DIR_1]
   connect_bd_net -net xlslice_1_Dout [get_bd_pins xlslice_1/Dout] [get_bd_pins Drive_DIR_3]
+  connect_bd_net -net xlslice_2_Dout [get_bd_pins xlslice_2/Dout] [get_bd_pins Drive_DIR_2]
+  connect_bd_net -net xlslice_3_Dout [get_bd_pins xlslice_3/Dout] [get_bd_pins Drive_DIR_4]
 
   # Restore current instance
   current_bd_instance $oldCurInst
@@ -1335,8 +1355,10 @@ proc create_root_design { parentCell } {
   connect_bd_net -net drive_DriveEn_2 [get_bd_pins drive/DriveEn_2] [get_bd_ports Breakout2_2]
   connect_bd_net -net drive_DriveEn_3 [get_bd_pins drive/DriveEn_3] [get_bd_ports Breakout2_8]
   connect_bd_net -net drive_DriveEn_4 [get_bd_pins drive/DriveEn_4] [get_bd_ports Breakout2_9]
-  connect_bd_net -net drive_Drive_DIR_1 [get_bd_pins drive/Drive_DIR_1] [get_bd_ports Drive_DIR_1] [get_bd_ports Drive_DIR_2]
-  connect_bd_net -net drive_Drive_DIR_3 [get_bd_pins drive/Drive_DIR_3] [get_bd_ports Drive_DIR_3] [get_bd_ports Drive_DIR_4]
+  connect_bd_net -net drive_Drive_DIR_1 [get_bd_pins drive/Drive_DIR_1] [get_bd_ports Drive_DIR_1]
+  connect_bd_net -net drive_Drive_DIR_2 [get_bd_pins drive/Drive_DIR_2] [get_bd_ports Drive_DIR_2]
+  connect_bd_net -net drive_Drive_DIR_3 [get_bd_pins drive/Drive_DIR_3] [get_bd_ports Drive_DIR_3]
+  connect_bd_net -net drive_Drive_DIR_4 [get_bd_pins drive/Drive_DIR_4] [get_bd_ports Drive_DIR_4]
   connect_bd_net -net gantry_CONFIG_1 [get_bd_pins gantry/CONFIG_1] [get_bd_ports CONFIG_1]
   connect_bd_net -net gantry_CONFIG_2 [get_bd_pins gantry/CONFIG_2] [get_bd_ports CONFIG_2]
   connect_bd_net -net gantry_CONFIG_3 [get_bd_pins gantry/CONFIG_3] [get_bd_ports CONFIG_3]
@@ -1382,30 +1404,30 @@ proc create_root_design { parentCell } {
   connect_bd_net -net xlconstant_0_dout [get_bd_pins xlconstant_0/dout] [get_bd_ports Breakout1_14]
 
   # Create address segments
-  assign_bd_address -dict [list offset 0x7FFF8000 range 0x00008000 offset 0x80000000 range 0x00008000] -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_gpio_0/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40000000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_gpio_1/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40070000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir1/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40080000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir2/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40090000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir3/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400A0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir4/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400B0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir5/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40010000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_gpio_dir/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400C0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_rst/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400D0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step1/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400E0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step2/S_AXI/Reg] -force
-  assign_bd_address -offset 0x400F0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step3/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40100000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step4/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40110000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step5/S_AXI/Reg] -force
-  assign_bd_address -offset 0x42800000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axi_timer_0/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40120000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_brakelight/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40020000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv1/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40030000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv2/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40040000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv3/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40050000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv4/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40130000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_headlight_lower/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40140000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_headlight_upper/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40150000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_workcell/S_AXI/Reg] -force
-  assign_bd_address -offset 0x40060000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/drive_en/S_AXI/Reg] -force
+  assign_bd_address -offset 0x41200000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_gpio_0/S_AXI/Reg] -force
+  assign_bd_address -offset 0x41210000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_gpio_1/S_AXI/Reg] -force
+  assign_bd_address -offset 0x41240000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir1/S_AXI/Reg] -force
+  assign_bd_address -offset 0x41250000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir2/S_AXI/Reg] -force
+  assign_bd_address -offset 0x41260000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir3/S_AXI/Reg] -force
+  assign_bd_address -offset 0x41270000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir4/S_AXI/Reg] -force
+  assign_bd_address -offset 0x41280000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_dir5/S_AXI/Reg] -force
+  assign_bd_address -offset 0x41220000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_gpio_dir/S_AXI/Reg] -force
+  assign_bd_address -offset 0x41290000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_rst/S_AXI/Reg] -force
+  assign_bd_address -offset 0x412A0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step1/S_AXI/Reg] -force
+  assign_bd_address -offset 0x412B0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step2/S_AXI/Reg] -force
+  assign_bd_address -offset 0x412C0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step3/S_AXI/Reg] -force
+  assign_bd_address -offset 0x412D0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step4/S_AXI/Reg] -force
+  assign_bd_address -offset 0x412E0000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs gantry/axi_gpio_step5/S_AXI/Reg] -force
+  assign_bd_address -dict [list offset 0x7FFF8000 range 0x00008000 offset 0x80000000 range 0x00008000] -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axi_timer_0/S_AXI/Reg] -force
+  assign_bd_address -offset 0x42840000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_brakelight/S_AXI/Reg] -force
+  assign_bd_address -offset 0x42800000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv1/S_AXI/Reg] -force
+  assign_bd_address -offset 0x42810000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv2/S_AXI/Reg] -force
+  assign_bd_address -offset 0x42820000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv3/S_AXI/Reg] -force
+  assign_bd_address -offset 0x42830000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/axi_timer_drv4/S_AXI/Reg] -force
+  assign_bd_address -offset 0x42850000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_headlight_lower/S_AXI/Reg] -force
+  assign_bd_address -offset 0x42860000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_headlight_upper/S_AXI/Reg] -force
+  assign_bd_address -offset 0x42870000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs lighting/axi_timer_workcell/S_AXI/Reg] -force
+  assign_bd_address -offset 0x41230000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs drive/drive_en/S_AXI/Reg] -force
 
 
   # Restore current instance
