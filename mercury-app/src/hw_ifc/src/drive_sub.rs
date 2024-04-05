@@ -13,7 +13,7 @@ use self::regmap::{
 use zynq::axigpio::{GPIOChannel, AXIGPIO, SIZEOF_AXIGPIO_REG};
 use zynq::axitimer::{AXITimer, SIZEOF_AXITIMER_REG};
 
-const MAX_LINEAR_SPEED: f64 = 100.0; /* meters/second */
+const MAX_LINEAR_SPEED: f64 = 100.0; /* radians/second */
 const MAX_ANGULAR_SPEED: f64 = 100.0; /* radians/second */
 const WHEEL_RADIUS: f64 = 0.095; /* meters */
 const BOT_WIDTH: f32 = 0.20; /* meters */
