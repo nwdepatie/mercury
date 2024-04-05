@@ -26,7 +26,7 @@ pub mod regmap;
 use self::regmap::{
     GANTRY_DIR1_ADDR, GANTRY_DIR2_ADDR, GANTRY_DIR3_ADDR, GANTRY_DIR4_ADDR, GANTRY_DIR5_ADDR,
     GANTRY_STEP1_ADDR, GANTRY_STEP2_ADDR, GANTRY_STEP3_ADDR, GANTRY_STEP4_ADDR, GANTRY_STEP5_ADDR,
-    SERVO_PWM_ADDR,
+    SERVO_PWM_ADDR, GANTRY_RESET_ADDR,
 };
 
 pub struct ServoController {
@@ -287,36 +287,71 @@ impl GantryController {
     pub fn calibrate_callback(&mut self) {
         rosrust::ros_info!("CALIBRATING...");
 
-        /* Zero everything */
-        let stepper_cmds = self
-            .model
-            .calc_control_signals(GantryPosition::new(0.0, 0.0, 0.0, 0.0));
-        self.write_steppers(stepper_cmds);
-
-        return;
-
-        self.write_steppers(stepper_cmds);
-
         /* Center this new position as 0,0,0 */
-        while (self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2) != 0) {
-            let current_pos = self.model.get_position();
-            let new_pos = current_pos.clone();
+        while (self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2) != 0b1111) {
+            rosrust::ros_info!("Limit Switch status: {:#b}", self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2));
 
-            /* Limit Switches 3 and 1 are X */
-            if ((self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2) & 0b0101) != 0b0101) {
-                new_pos[GantryAxes::X] -= 100.0;
+            /* Limit Switches 2 is X1 */
+            if ((self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2) & 0b0100) != 0b0100) {
+                self.stepper2
+                    .lock()
+                    .unwrap()
+                    .set_direction(true); /* true = robot forward */
+                self.stepper2
+                    .lock()
+                    .unwrap()
+                    .write_step_cmd(100);
             }
 
-            /* Limit Switch 4 is Y */
+            /* Limit Switch 0 is X2 */
+            if ((self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2) & 0b0001) != 0b0001) {
+                self.stepper3
+                    .lock()
+                    .unwrap()
+                    .set_direction(true); /* true = robot forward */
+                self.stepper3
+                    .lock()
+                    .unwrap()
+                    .write_step_cmd(100);
+            }
+
+            /* Limit Switch 3 is Y */
             if ((self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2) & 0b1000) != 0b1000) {
-                new_pos[GantryAxes::Y] -= 100.0;
+                self.stepper4
+                    .lock()
+                    .unwrap()
+                    .set_direction(true); /* true = robot forward */
+                self.stepper4
+                    .lock()
+                    .unwrap()
+                    .write_step_cmd(100);
             }
 
-            /* Limit Switch 2 is Z */
+            /* Limit Switch 1 is Z */
             if ((self.reset.lock().unwrap().read_gpio(GPIOChannel::GpioChannel2) & 0b0010) != 0b0010) {
-                new_pos[GantryAxes::Z] -= 100.0;
+                self.stepper5
+                    .lock()
+                    .unwrap()
+                    .set_direction(false); /* true = robot forward */
+                self.stepper5
+                    .lock()
+                    .unwrap()
+                    .write_step_cmd(100);
             }
-            let stepper_cmds = self.model.calc_control_signals(new_pos);
+
+            /* Wait for all commands to finish */
+            while !self.stepper2.lock().unwrap().read_done() {
+                thread::sleep(Duration::from_millis(300));
+            }
+            while !self.stepper3.lock().unwrap().read_done() {
+                thread::sleep(Duration::from_millis(300));
+            }
+            while !self.stepper4.lock().unwrap().read_done() {
+                thread::sleep(Duration::from_millis(300));
+            }
+            while !self.stepper5.lock().unwrap().read_done() {
+                thread::sleep(Duration::from_millis(300));
+            }
         }
 
         /* Center this new position as 0,0,0 */
@@ -399,7 +434,7 @@ fn main() {
     )));
 
     let reset = Arc::new(Mutex::new(
-        AXIGPIO::new(GANTRY_DIR3_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
+        AXIGPIO::new(GANTRY_RESET_ADDR, SIZEOF_AXIGPIO_REG).unwrap(),
     ));
 
     let gantry_ctrl = Arc::new(Mutex::new(GantryController::new(
