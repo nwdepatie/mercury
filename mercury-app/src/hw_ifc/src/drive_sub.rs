@@ -73,13 +73,16 @@ impl DriveController {
             .dutycycle
             .clamp(0, u32::MAX);
 
+        let left_dir = motor_commands[WheelPositions::LeftWheels].direction as u32;
+        let right_dir = motor_commands[WheelPositions::RightWheels].direction as u32;
+
         /* Set the directions */
         self.direction_ctrl.lock().unwrap().write_gpio(
-            motor_commands[WheelPositions::LeftWheels].direction as u32,
+            (left_dir << 1) | (!left_dir & 0xb1),
             GPIOChannel::GpioChannel1,
         );
         self.direction_ctrl.lock().unwrap().write_gpio(
-            motor_commands[WheelPositions::RightWheels].direction as u32,
+            (right_dir << 1) | (!right_dir & 0xb1),
             GPIOChannel::GpioChannel2,
         );
 
